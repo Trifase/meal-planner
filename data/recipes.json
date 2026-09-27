@@ -1,0 +1,972 @@
+[
+  {
+    "id": "colazione-caffe-idratazione",
+    "title": "Colazione: Caffè Espresso & Idratazione",
+    "category": "colazione",
+    "allowed_slots": [
+      "colazione"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 3,
+    "ingredients": [
+      {
+        "name": "Caffè macinato o cialde",
+        "quantity": 2,
+        "unit": "tazzine",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Latte",
+        "quantity": 50,
+        "unit": "ml",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Acqua naturale",
+        "quantity": 1,
+        "unit": "litro",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Bevi 2 grandi bicchieri d'acqua prima del caffè per riattivare i reni e la termogenesi."
+  },
+  {
+    "id": "spuntino-noci-parmigiano",
+    "title": "Spuntino: Noci & Parmigiano",
+    "category": "spuntino",
+    "allowed_slots": [
+      "merenda_mattina",
+      "merenda_pomeriggio"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 1,
+    "ingredients": [
+      {
+        "name": "Noci sgusciate o mandorle",
+        "quantity": 50,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 40,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Zero picco di insulina. Perfetto al PC, spegne la fame nervosa senza sonnolenza."
+  },
+  {
+    "id": "spuntino-yogurt-cannella-noci",
+    "title": "Spuntino: Yogurt Greco con Cannella e Noci",
+    "category": "spuntino",
+    "allowed_slots": [
+      "merenda_mattina",
+      "merenda_pomeriggio"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 2,
+    "ingredients": [
+      {
+        "name": "Yogurt greco",
+        "quantity": 300,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Cannella in polvere",
+        "quantity": 1,
+        "unit": "pizzico",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Noci sgusciate",
+        "quantity": 30,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "La cannella migliora la sensibilità recettoriale dell'insulina."
+  },
+  {
+    "id": "spuntino-mela-parmigiano",
+    "title": "Spuntino: Mela a fette & Parmigiano",
+    "category": "spuntino",
+    "allowed_slots": [
+      "merenda_pomeriggio"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 2,
+    "ingredients": [
+      {
+        "name": "Mele",
+        "quantity": 2,
+        "unit": "frutti",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 40,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "La fibra della buccia e i grassi del formaggio frenano l'indice glicemico del fruttosio."
+  },
+  {
+    "id": "spuntino-uovo-sodo",
+    "title": "Spuntino: Uovo Sodo & Tisana",
+    "category": "spuntino",
+    "allowed_slots": [
+      "merenda_mattina",
+      "merenda_pomeriggio"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 1,
+    "ingredients": [
+      {
+        "name": "Uova fresche",
+        "quantity": 2,
+        "unit": "uova",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Sale e pepe",
+        "quantity": 1,
+        "unit": "pizzico",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "100% proteine nobili, zero carboidrati. Sazietà immediata."
+  },
+  {
+    "id": "spuntino-fesa-finocchio",
+    "title": "Spuntino: Roll di Fesa di Tacchino & Finocchio",
+    "category": "spuntino",
+    "allowed_slots": [
+      "merenda_pomeriggio"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 2,
+    "ingredients": [
+      {
+        "name": "Fesa di tacchino a fette",
+        "quantity": 100,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Finocchi",
+        "quantity": 1,
+        "unit": "finocchio",
+        "category": "Ortofrutta"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Fresco, croccante e proteico."
+  },
+  {
+    "id": "pasta-ragu",
+    "title": "Pasta con Ragù Magro & Parmigiano",
+    "category": "pranzo",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 8,
+    "ingredients": [
+      {
+        "name": "Pasta (integrale o semola)",
+        "quantity": 160,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Carne macinata magra di manzo",
+        "quantity": 250,
+        "unit": "g",
+        "category": "Macellaio sotto casa"
+      },
+      {
+        "name": "Passata di pomodoro",
+        "quantity": 200,
+        "unit": "ml",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 30,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 2,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": {
+      "is_prep": true,
+      "prep_day": "Domenica",
+      "batch_title": "Pentolone di Ragù Magro della Domenica",
+      "instructions": "Cuocere 500-600g di macinato magro del macellaio con cipolla, carota e passata di pomodoro. Dividere in vaschette da 250g (2 porzioni ciascuna). Mettere le porzioni della settimana in frigo e congelare le altre per le settimane successive.",
+      "can_freeze": true
+    },
+    "notes": "Piatto principe del meal prep domenicale. Si scongela e scalda in 3 minuti."
+  },
+  {
+    "id": "pasta-aglio-olio-tonno",
+    "title": "Pasta Aglio, Olio e Tonno Express",
+    "category": "pranzo",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 8,
+    "ingredients": [
+      {
+        "name": "Pasta (integrale o semola)",
+        "quantity": 160,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Tonno in scatola (sgocciolato)",
+        "quantity": 160,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Aglio fresco",
+        "quantity": 2,
+        "unit": "spicchi",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 3,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Origano o peperoncino",
+        "quantity": 1,
+        "unit": "pizzico",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Piatto lampo salvavita per i giorni più frenetici. L'allicina dell'aglio aiuta la vasodilatazione e la pressione arteriosa."
+  },
+  {
+    "id": "insalata-riso-venere",
+    "title": "Grande Insalata di Riso Venere",
+    "category": "pranzo",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 0,
+    "ingredients": [
+      {
+        "name": "Riso Venere",
+        "quantity": 150,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Tonno in scatola (sgocciolato)",
+        "quantity": 160,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Uova fresche",
+        "quantity": 2,
+        "unit": "uova",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Mozzarella",
+        "quantity": 125,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Olive denocciolate",
+        "quantity": 40,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 2,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": {
+      "is_prep": true,
+      "prep_day": "Domenica",
+      "batch_title": "Lessatura Riso Venere & Amido Resistente",
+      "instructions": "Lessare 300g di riso Venere al dente, scolare e raffreddare immediatamente sotto acqua corrente per bloccare la cottura. Conservare in frigo in contenitore ermetico (dura 4 giorni e sviluppa amido resistente).",
+      "can_freeze": false
+    },
+    "notes": "Tempo di preparazione zero: si tira fuori dal frigo, si uniscono gli ingredienti ed è pronto. L'amido resistente raffreddato non innalza l'insulina."
+  },
+  {
+    "id": "hamburger-macellaio-pure",
+    "title": "Hamburger del Macellaio con Purè",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 5,
+    "ingredients": [
+      {
+        "name": "Hamburger scelti di manzo o vitello",
+        "quantity": 300,
+        "unit": "g",
+        "category": "Macellaio sotto casa"
+      },
+      {
+        "name": "Purè di patate o verdure",
+        "quantity": 200,
+        "unit": "g",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 20,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 1,
+        "unit": "cucchiaio",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": {
+      "is_prep": true,
+      "prep_day": "Domenica",
+      "batch_title": "Preparazione Base Purè 50/50",
+      "instructions": "Bollire metà patate e metà zucca o cavolfiore, schiacciare con noce moscata, un goccio di latte e parmigiano. Tenere in frigo o freezer.",
+      "can_freeze": true
+    },
+    "notes": "Cena express da 5 minuti: cuocere gli hamburger 2 min per lato in padella rovente."
+  },
+  {
+    "id": "passato-verdure-cannellini",
+    "title": "Passato di Verdure con Cannellini e Parmigiano",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 4,
+    "ingredients": [
+      {
+        "name": "Zucchine fresche",
+        "quantity": 300,
+        "unit": "g",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Carote fresche",
+        "quantity": 200,
+        "unit": "g",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Zucca fresca",
+        "quantity": 200,
+        "unit": "g",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Fagioli cannellini in scatola",
+        "quantity": 240,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 40,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 2,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": {
+      "is_prep": true,
+      "prep_day": "Domenica",
+      "batch_title": "Pentolone di Passato di Verdura Indistruttibile",
+      "instructions": "Bollire 1 kg di zucchine, carote e zucca in acqua leggermente salata (senza piselli né patate). Frullare con mixer a immersione. Dividere in vaschette: 1 in frigo per giovedì, 2 nel freezer per le prossime settimane.",
+      "can_freeze": true
+    },
+    "notes": "Ideale per i rientri tardivi serali: caldo, distensivo, saziante e pronto in 3 minuti di orologio."
+  },
+  {
+    "id": "padellata-uova-fagiolini",
+    "title": "Padellata Express: Uova al Tegamino & Fagiolini Saltati",
+    "category": "pranzo",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 5,
+    "ingredients": [
+      {
+        "name": "Uova fresche",
+        "quantity": 4,
+        "unit": "uova",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Fagiolini surgelati",
+        "quantity": 250,
+        "unit": "g",
+        "category": "Surgelati"
+      },
+      {
+        "name": "Pane integrale",
+        "quantity": 2,
+        "unit": "fette",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Aglio fresco",
+        "quantity": 1,
+        "unit": "spicchio",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 2,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "I fagiolini cuociono in 4 minuti al microonde o direttamente in padella con aglio e olio."
+  },
+  {
+    "id": "salmone-ricotta-spinaci",
+    "title": "Salmone Affumicato con Ricotta e Spinaci",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 4,
+    "ingredients": [
+      {
+        "name": "Salmone affumicato",
+        "quantity": 200,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Ricotta",
+        "quantity": 200,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Spinaci surgelati",
+        "quantity": 300,
+        "unit": "g",
+        "category": "Surgelati"
+      },
+      {
+        "name": "Limoni",
+        "quantity": 1,
+        "unit": "frutto",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 2,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Zero cottura per il salmone e la ricotta; spinaci pronti in 4 minuti al microonde. Bomba di Omega-3."
+  },
+  {
+    "id": "wrap-tacchino-parmigiano",
+    "title": "Piadina Integrale con Fesa di Tacchino e Zucchine",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 4,
+    "ingredients": [
+      {
+        "name": "Piadine integrali",
+        "quantity": 2.0,
+        "unit": "piadine",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Fesa di tacchino a fette",
+        "quantity": 150.0,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 30.0,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Zucchine grigliate surgelate",
+        "quantity": 200.0,
+        "unit": "g",
+        "category": "Surgelati"
+      },
+      {
+        "name": "Insalata mista o rucola",
+        "quantity": 50.0,
+        "unit": "g",
+        "category": "Ortofrutta"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Piadina scaldata 2 minuti in padella e farcita a crudo: batte qualsiasi panino o kebab del delivery."
+  },
+  {
+    "id": "pollo-straccetti-zucchine",
+    "title": "Straccetti di Pollo con Zucchine Grigliate",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 6,
+    "ingredients": [
+      {
+        "name": "Petto di pollo a fette",
+        "quantity": 300.0,
+        "unit": "g",
+        "category": "Macellaio sotto casa"
+      },
+      {
+        "name": "Zucchine grigliate surgelate",
+        "quantity": 250.0,
+        "unit": "g",
+        "category": "Surgelati"
+      },
+      {
+        "name": "Pane integrale",
+        "quantity": 2.0,
+        "unit": "fette",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Limoni",
+        "quantity": 1.0,
+        "unit": "frutto",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 2.0,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Straccetti cotti a fiamma viva in 3 minuti. Leggero, proteico e digeribile prima di andare a dormire."
+  },
+  {
+    "id": "pizza-sabato-famiglia",
+    "title": "Pizza in Famiglia del Sabato Sera 🍕",
+    "category": "cena",
+    "allowed_slots": [
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 0,
+    "ingredients": [
+      {
+        "name": "Pizza (Margherita o con Prosciutto/Funghi)",
+        "quantity": 2,
+        "unit": "pizze",
+        "category": "Pizzeria / Forno"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "La serata di relax in famiglia."
+  },
+  {
+    "id": "pasta-panna-prosciutto",
+    "title": "Pasta Panna e Prosciutto",
+    "category": "pranzo",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 8,
+    "ingredients": [
+      {
+        "name": "Pasta (integrale o semola)",
+        "quantity": 160,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Panna da cucina",
+        "quantity": 150,
+        "unit": "ml",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Prosciutto cotto a cubetti",
+        "quantity": 120,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 20,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 1,
+        "unit": "cucchiaio",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "I grassi e le proteine del condimento abbassano l'indice glicemico della pasta."
+  },
+  {
+    "id": "pasta-zucchine-tritato",
+    "title": "Pasta con Zucchine e Tritato Magro",
+    "category": "pranzo",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 10,
+    "ingredients": [
+      {
+        "name": "Pasta (integrale o semola)",
+        "quantity": 160,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Carne macinata magra di manzo",
+        "quantity": 200,
+        "unit": "g",
+        "category": "Macellaio sotto casa"
+      },
+      {
+        "name": "Zucchine fresche",
+        "quantity": 250,
+        "unit": "g",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 20,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Aglio fresco",
+        "quantity": 1,
+        "unit": "spicchio",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 2,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Le zucchine e la carne macinata magra creano un pasto saziante ad altissimo valore proteico e basso carico glicemico."
+  },
+  {
+    "id": "pasta-carbonara",
+    "title": "Pasta alla Carbonara",
+    "category": "pranzo",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 10,
+    "ingredients": [
+      {
+        "name": "Pasta (integrale o semola)",
+        "quantity": 160.0,
+        "unit": "g",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Guanciale o pancetta tesa",
+        "quantity": 100.0,
+        "unit": "g",
+        "category": "Macellaio sotto casa"
+      },
+      {
+        "name": "Uova fresche",
+        "quantity": 4.0,
+        "unit": "uova",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Pecorino Romano o Parmigiano",
+        "quantity": 40.0,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Pepe nero macinato",
+        "quantity": 1.0,
+        "unit": "pizzico",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "La carbonara originale ha un'ottima quota proteica ed energetica."
+  },
+  {
+    "id": "pollo-grigliato-pure",
+    "title": "Pollo Grigliato con Purè Soffice",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 7,
+    "ingredients": [
+      {
+        "name": "Petto di pollo a fette",
+        "quantity": 350,
+        "unit": "g",
+        "category": "Macellaio sotto casa"
+      },
+      {
+        "name": "Purè di patate o verdure",
+        "quantity": 250,
+        "unit": "g",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Limoni",
+        "quantity": 1,
+        "unit": "frutto",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 2,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Pollo cotto su piastra o padella ben calda in 3-4 minuti."
+  },
+  {
+    "id": "toast-prosciutto-formaggio",
+    "title": "Toast Caldo con Prosciutto Cotto e Formaggio",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena",
+      "spuntino"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 4,
+    "ingredients": [
+      {
+        "name": "Pane integrale",
+        "quantity": 4,
+        "unit": "fette",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Prosciutto cotto a fette",
+        "quantity": 120,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Formaggio a fette (o scamorza)",
+        "quantity": 80,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Tostato 3 minuti in tostapane o padella rovente. Super veloce per le sere di stanchezza estrema."
+  },
+  {
+    "id": "omelette-cotto-zucchine",
+    "title": "Omelette Soffice con Prosciutto Cotto e Zucchine",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 5,
+    "ingredients": [
+      {
+        "name": "Uova fresche",
+        "quantity": 4,
+        "unit": "uova",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Prosciutto cotto a cubetti",
+        "quantity": 80,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Zucchine grigliate surgelate",
+        "quantity": 200,
+        "unit": "g",
+        "category": "Surgelati"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 20,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 1,
+        "unit": "cucchiaio",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Pronta in 4 minuti in padella antiaderente: zero carboidrati raffinati, altissimo potere saziante."
+  },
+  {
+    "id": "carpaccio-manzo-rucola",
+    "title": "Carpaccio di Manzo con Rucola e Parmigiano",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 2,
+    "ingredients": [
+      {
+        "name": "Carpaccio di manzo magro",
+        "quantity": 250,
+        "unit": "g",
+        "category": "Macellaio sotto casa"
+      },
+      {
+        "name": "Rucola fresca",
+        "quantity": 80,
+        "unit": "g",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Parmigiano Reggiano",
+        "quantity": 40,
+        "unit": "g",
+        "category": "Banco Frigo & Latticini"
+      },
+      {
+        "name": "Limoni",
+        "quantity": 1,
+        "unit": "frutto",
+        "category": "Ortofrutta"
+      },
+      {
+        "name": "Olio extravergine d'oliva",
+        "quantity": 2,
+        "unit": "cucchiai",
+        "category": "Dispensa, Scatolame & Secco"
+      },
+      {
+        "name": "Pane integrale",
+        "quantity": 2,
+        "unit": "fette",
+        "category": "Dispensa, Scatolame & Secco"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Cottura zero secondi: stendi la carne, condisci con rucola, scaglie di parmigiano, limone e olio EVO. Cena gourmet in 2 minuti."
+  },
+  {
+    "id": "pranzo-da-suocera",
+    "title": "Pranzo della Domenica in Famiglia 👵",
+    "category": "pranzo",
+    "allowed_slots": [
+      "pranzo"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 0,
+    "ingredients": [],
+    "meal_prep": null,
+    "notes": "Pranzo domenicale fuori casa in famiglia (zero spesa al supermercato)."
+  },
+  {
+    "id": "panini-da-giovanni",
+    "title": "Panini da Giovanni 🥪",
+    "category": "cena",
+    "allowed_slots": [
+      "pranzo",
+      "cena"
+    ],
+    "servings": 2,
+    "prep_time_minutes": 0,
+    "ingredients": [
+      {
+        "name": "Panini da Giovanni (Takeaway)",
+        "quantity": 2,
+        "unit": "panini",
+        "category": "Pizzeria / Forno"
+      }
+    ],
+    "meal_prep": null,
+    "notes": "Take-away del sabato sera con i panini da Giovanni."
+  }
+]

@@ -1,0 +1,13 @@
+services:
+  meal-planner:
+    build: .
+    container_name: meal-planner
+    restart: unless-stopped
+    ports:
+      - "9999:9999"
+    volumes:
+      # Monta la cartella data locale per salvare le ricette e il piano su disco
+      - ./data:/app/data
+    environment:
+      - TZ=Europe/Rome
+      - PORT=9999

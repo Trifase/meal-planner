@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metabolic Planner - Sconfiggere l'Insulino Resistenza</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="logo-icon">🥑</div>
+      <div>
+        <h1>Metabolic Planner</h1>
+        <p class="subtitle">Pianificatore Pasti Settimanale • Family Meal Planner</p>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="calendar">
+        <span class="tab-icon">📅</span> Calendario
+      </button>
+      <button class="nav-tab" data-tab="shopping">
+        <span class="tab-icon">🛒</span> Lista Spesa
+      </button>
+      <button class="nav-tab" data-tab="recipes">
+        <span class="tab-icon">📖</span> Ricette
+      </button>
+      <button class="nav-tab" data-tab="mealprep">
+        <span class="tab-icon">🍳</span> Meal Prep
+      </button>
+    </nav>
+  </header>
+
+  <main class="container">
+    
+    <!-- TAB 1: CALENDARIO -->
+    <section id="tab-calendar" class="tab-content active">
+      <div class="section-header">
+        <div>
+          <h2>Pianificazione Pasti</h2>
+          <p class="section-desc">Organizza i pasti della settimana. La lista spesa e il meal prep domenicale si aggiornano in automatico.</p>
+        </div>
+        <div class="header-actions">
+          <div class="week-filter-group">
+            <button class="btn btn-outline active" id="btn-view-w1">Settimana 1 (Default)</button>
+            <button class="btn btn-outline" id="btn-view-w2">Settimana 2</button>
+            <button class="btn btn-outline" id="btn-view-both">Entrambe</button>
+          </div>
+          <button class="btn btn-secondary" id="btn-copy-w1-to-w2" title="Copia tutti i pasti della Settimana 1 sulla Settimana 2">
+            📋 Duplica W1 in W2
+          </button>
+        </div>
+      </div>
+
+      <div id="calendar-grid" class="calendar-container">
+        <!-- Rendered dynamically via JavaScript -->
+      </div>
+    </section>
+
+    <!-- TAB 2: LISTA DELLA SPESA -->
+    <section id="tab-shopping" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h2>Lista della Spesa Settimanale (Domenica)</h2>
+          <p class="section-desc">Ingredienti calcolati per la settimana selezionata dai pasti programmati nel calendario.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="btn-copy-shopping-whatsapp">
+            📲 Copia per WhatsApp
+          </button>
+          <button class="btn btn-outline" id="btn-refresh-shopping">
+            🔄 Aggiorna
+          </button>
+        </div>
+      </div>
+
+      <div class="shopping-toolbar">
+        <div class="shopping-week-selector">
+          <span class="selector-label">Spesa per:</span>
+          <button class="btn btn-outline active" id="btn-shop-w1">🗓️ Settimana 1 (Default)</button>
+          <button class="btn btn-outline" id="btn-shop-w2">🗓️ Settimana 2</button>
+          <button class="btn btn-outline" id="btn-shop-both">🗓️ Entrambe (14 giorni)</button>
+        </div>
+      </div>
+
+      <div class="shopping-stats-banner">
+        <span>💡 <strong>Spesa Settimanale della Domenica:</strong> Spunta gli ingredienti man mano che li metti nel carrello per i prossimi 7 giorni. Tutti gli ingredienti uguali sono raggruppati e sommati.</span>
+      </div>
+
+      <div id="shopping-categories-container" class="shopping-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- TAB 3: RICETTE -->
+    <section id="tab-recipes" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h2>Ricettario Anti-Insulino-Resistenza</h2>
+          <p class="section-desc">Ingredienti puliti, porzioni scalabili (per 1, 2, 3 o più persone) e preparazioni rapide.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="btn-open-new-recipe-modal">
+            ➕ Nuova Ricetta
+          </button>
+        </div>
+      </div>
+
+      <div class="recipes-filter-bar">
+        <input type="text" id="recipe-search" placeholder="🔍 Cerca ricetta per titolo o ingrediente..." class="form-input search-input">
+        <div class="category-pills">
+          <button class="pill active" data-cat="all">Tutte</button>
+          <button class="pill" data-cat="pranzo">Pranzi</button>
+          <button class="pill" data-cat="cena">Cene</button>
+          <button class="pill" data-cat="spuntino">Spuntini</button>
+          <button class="pill" data-cat="colazione">Colazione</button>
+          <button class="pill" data-cat="meal_prep">Solo Meal Prep</button>
+        </div>
+      </div>
+
+      <div id="recipes-grid" class="recipes-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- TAB 4: MEAL PREP -->
+    <section id="tab-mealprep" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h2>Meal Prep Domenicale & Congelatore</h2>
+          <p class="section-desc">I 45 minuti domenicali che disinnescano lo stress e rendono i pranzi e le cene infrasettimanali pronti in 4-8 minuti.</p>
+        </div>
+      </div>
+
+      <div class="mealprep-container">
+        <div class="prep-column">
+          <div class="prep-card-header">
+            <h3>🗓️ Domenica Settimana 1</h3>
+            <span class="badge badge-prep">45 Minuti Totali</span>
+          </div>
+          <div id="mealprep-w1-list" class="prep-list">
+            <!-- Dynamic tasks -->
+          </div>
+        </div>
+
+        <div class="prep-column">
+          <div class="prep-card-header">
+            <h3>🗓️ Domenica Settimana 2</h3>
+            <span class="badge badge-prep">Rabbocco & Preparazione</span>
+          </div>
+          <div id="mealprep-w2-list" class="prep-list">
+            <!-- Dynamic tasks -->
+          </div>
+        </div>
+      </div>
+
+      <div class="freezer-guide-box">
+        <h3>🧊 Strategia Scorte Freezer a Lungo Termine</h3>
+        <ul>
+          <li><strong>Vaschette di Ragù Magro:</strong> Il macinato di manzo cotto a fuoco lento resiste fino a 3 mesi nel congelatore in porzioni da 250g.</li>
+          <li><strong>Passato di Verdura Indistruttibile:</strong> Porzionato in barattoli da 500ml per 2 persone (zucchine, carote, zucca).</li>
+          <li><strong>Carne del Macellaio sotto casa:</strong> Farsi incartare gli hamburger e le fettine singolarmente e congelarli subito. Si scongelano in 4 minuti al microonde.</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: RECIPE VIEW & PORTION MULTIPLIER -->
+  <div id="modal-view-recipe" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 id="view-recipe-title">Titolo Ricetta</h3>
+          <div class="modal-sub-badges" id="view-recipe-badges"></div>
+        </div>
+        <button class="modal-close" id="btn-close-view-recipe-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Portion Multiplier Box -->
+        <div class="servings-scaler-box">
+          <div class="scaler-label-group">
+            <span class="scaler-title">👥 Porzioni da preparare:</span>
+            <span class="scaler-base-info" id="view-recipe-base-info">Base ricetta: 2 porzioni</span>
+          </div>
+          <div class="scaler-controls">
+            <button type="button" class="btn-scaler" id="btn-scale-minus" title="Riduci porzione">−</button>
+            <span class="scaler-count" id="view-recipe-servings-count">2</span>
+            <button type="button" class="btn-scaler" id="btn-scale-plus" title="Aumenta porzione">+</button>
+          </div>
+        </div>
+
+        <!-- Scaled Ingredients List -->
+        <div class="view-recipe-section">
+          <h4>🛒 Ingredienti (calcolati per le porzioni scelte):</h4>
+          <ul id="view-recipe-ingredients-list" class="view-ingredients-list">
+            <!-- Populated dynamically -->
+          </ul>
+        </div>
+
+        <!-- Meal Prep Section -->
+        <div id="view-recipe-mealprep-box" class="view-recipe-section hidden">
+          <h4>🍳 Preparazione in anticipo (Meal Prep):</h4>
+          <p id="view-recipe-mealprep-text" class="view-prep-text"></p>
+        </div>
+
+        <!-- Notes Section -->
+        <div id="view-recipe-notes-box" class="view-recipe-section hidden">
+          <h4>💡 Note & Consigli:</h4>
+          <p id="view-recipe-notes-text" class="view-notes-text"></p>
+        </div>
+      </div>
+      <div class="modal-footer flex-between">
+        <button type="button" class="btn btn-outline" id="btn-open-edit-from-view">✏️ Modifica Ricetta</button>
+        <button type="button" class="btn btn-secondary" id="btn-close-view-bottom">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RECIPE SELECTOR FOR CALENDAR SLOT -->
+  <div id="modal-select-recipe" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-slot-title">Scegli Ricetta per Slot</h3>
+        <button class="modal-close" id="btn-close-slot-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="slot-modal-search" placeholder="Filtra ricette..." class="form-input">
+        <div id="slot-recipes-list" class="slot-recipes-list">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline text-danger" id="btn-clear-slot">Rimuovi Pasto da questo Slot</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RECIPE CREATE / EDIT -->
+  <div id="modal-edit-recipe" class="modal-overlay hidden">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <h3 id="recipe-modal-title">Nuova Ricetta</h3>
+        <button class="modal-close" id="btn-close-recipe-modal">&times;</button>
+      </div>
+      <form id="form-recipe" class="modal-body">
+        <input type="hidden" id="edit-recipe-id">
+        
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="recipe-title">Titolo Ricetta</label>
+            <input type="text" id="recipe-title" class="form-input" required placeholder="Es. Pasta con il Ragù Magro">
+          </div>
+          <div class="form-group flex-1">
+            <label for="recipe-category">Categoria</label>
+            <select id="recipe-category" class="form-input">
+              <option value="pranzo">Pranzo</option>
+              <option value="cena">Cena</option>
+              <option value="spuntino">Spuntino</option>
+              <option value="colazione">Colazione</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="recipe-servings">Porzioni Base</label>
+            <input type="number" id="recipe-servings" class="form-input" value="2" min="1" max="20" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="recipe-prep-time">Tempo (minuti)</label>
+            <input type="number" id="recipe-prep-time" class="form-input" value="8" min="0">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Slot consentiti nel calendario</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" name="allowed_slots" value="colazione"> Colazione</label>
+            <label><input type="checkbox" name="allowed_slots" value="merenda_mattina"> Merenda Mattina</label>
+            <label><input type="checkbox" name="allowed_slots" value="pranzo" checked> Pranzo</label>
+            <label><input type="checkbox" name="allowed_slots" value="merenda_pomeriggio"> Merenda Pomeriggio</label>
+            <label><input type="checkbox" name="allowed_slots" value="cena" checked> Cena</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Note Cliniche / Consigli Antinsulina</label>
+          <input type="text" id="recipe-notes" class="form-input" placeholder="Es. Consumare verdura prima della portata principale; camminare 15 min dopo.">
+        </div>
+
+        <!-- Ingredients table -->
+        <div class="form-group">
+          <div class="flex-between">
+            <label>Ingredienti (per le Porzioni Base indicate)</label>
+            <button type="button" class="btn btn-sm btn-outline" id="btn-add-ingredient-row">➕ Aggiungi Ingrediente</button>
+          </div>
+          <div id="ingredients-form-list" class="ingredients-form-list">
+            <!-- Dynamic ingredient rows -->
+          </div>
+        </div>
+
+        <!-- Meal Prep toggle -->
+        <div class="mealprep-toggle-box">
+          <label class="toggle-label">
+            <input type="checkbox" id="recipe-is-mealprep">
+            <span><strong>Richiede Meal Prep Domenicale / Preparazione in anticipo</strong></span>
+          </label>
+          <div id="mealprep-details-fields" class="mealprep-subfields hidden">
+            <div class="form-group">
+              <label for="prep-batch-title">Titolo Batch / Preparazione</label>
+              <input type="text" id="prep-batch-title" class="form-input" placeholder="Es. Pentolone di Ragù Magro">
+            </div>
+            <div class="form-group">
+              <label for="prep-instructions">Istruzioni Meal Prep</label>
+              <textarea id="prep-instructions" class="form-input" rows="2" placeholder="Come cucinare la base domenica e quante porzioni surgelare..."></textarea>
+            </div>
+            <label class="checkbox-inline">
+              <input type="checkbox" id="prep-can-freeze" checked>
+              <span>Può essere congelato in freezer per le settimane successive</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btn-cancel-recipe">Annulla</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-recipe">Salva Ricetta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

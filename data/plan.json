@@ -1,0 +1,198 @@
+{
+  "weeks": [
+    {
+      "week_number": 1,
+      "title": "Settimana 1",
+      "days": [
+        {
+          "day_index": 0,
+          "day_name": "Lunedì",
+          "note": "Pranzo rapido | Rientro famiglia ore 18:40",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-yogurt-cannella-noci",
+            "pranzo": "insalata-riso-venere",
+            "merenda_pomeriggio": "spuntino-noci-parmigiano",
+            "cena": "panini-da-giovanni"
+          },
+          "walking_pad": "15 min alle 13:25 (post-pranzo) + 20 min alle 18:00 (stacco prima del rientro famiglia)"
+        },
+        {
+          "day_index": 1,
+          "day_name": "Martedì",
+          "note": "Cena lampo (ore 20:00: rientro serale)",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-noci-parmigiano",
+            "pranzo": "pasta-ragu",
+            "merenda_pomeriggio": "spuntino-yogurt-cannella-noci",
+            "cena": "hamburger-macellaio-pure"
+          },
+          "walking_pad": "15 min alle 13:35 (post-pranzo) + 20 min alle 18:00 (stacco)"
+        },
+        {
+          "day_index": 2,
+          "day_name": "Mercoledì",
+          "note": "Pranzo veloce",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-yogurt-cannella-noci",
+            "pranzo": "pasta-aglio-olio-tonno",
+            "merenda_pomeriggio": "spuntino-noci-parmigiano",
+            "cena": "salmone-ricotta-spinaci"
+          },
+          "walking_pad": "15 min alle 13:25 (post-pranzo) + 20 min alle 18:00 (stacco)"
+        },
+        {
+          "day_index": 3,
+          "day_name": "Giovedì",
+          "note": "Cena lampo (ore 20:00: rientro serale)",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-noci-parmigiano",
+            "pranzo": "pasta-ragu",
+            "merenda_pomeriggio": "spuntino-yogurt-cannella-noci",
+            "cena": "passato-verdure-cannellini"
+          },
+          "walking_pad": "15 min alle 13:35 (post-pranzo) + 20 min alle 18:00 (stacco)"
+        },
+        {
+          "day_index": 4,
+          "day_name": "Venerdì",
+          "note": "Pranzo veloce | Chiusura settimana",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-yogurt-cannella-noci",
+            "pranzo": "wrap-tacchino-parmigiano",
+            "merenda_pomeriggio": "spuntino-fesa-finocchio",
+            "cena": "pollo-straccetti-zucchine"
+          },
+          "walking_pad": "15 min alle 13:25 (post-pranzo) + 20 min alle 18:00 (stacco)"
+        },
+        {
+          "day_index": 5,
+          "day_name": "Sabato",
+          "note": "Giornata relax in famiglia | Panini da Giovanni",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-noci-parmigiano",
+            "pranzo": "pasta-carbonara",
+            "merenda_pomeriggio": "spuntino-yogurt-cannella-noci",
+            "cena": "passato-verdure-cannellini"
+          },
+          "walking_pad": "Camminata libera / tempo con i bambini"
+        },
+        {
+          "day_index": 6,
+          "day_name": "Domenica",
+          "note": "Pranzo in famiglia & 45 min Meal Prep",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-yogurt-cannella-noci",
+            "pranzo": "pranzo-da-suocera",
+            "merenda_pomeriggio": "spuntino-noci-parmigiano",
+            "cena": "omelette-cotto-zucchine"
+          },
+          "walking_pad": "Passeggiata pomeridiana"
+        }
+      ]
+    },
+    {
+      "week_number": 2,
+      "title": "Settimana 2",
+      "days": [
+        {
+          "day_index": 7,
+          "day_name": "Lunedì",
+          "note": "Pranzo rapido | Rientro famiglia ore 18:40",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-noci-parmigiano",
+            "pranzo": "insalata-riso-venere",
+            "merenda_pomeriggio": "spuntino-yogurt-cannella-noci",
+            "cena": "pollo-straccetti-zucchine"
+          },
+          "walking_pad": "15 min alle 13:25 + 20 min alle 18:00"
+        },
+        {
+          "day_index": 8,
+          "day_name": "Martedì",
+          "note": "Cena lampo (ore 20:00: rientro serale)",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-yogurt-cannella-noci",
+            "pranzo": "pasta-ragu",
+            "merenda_pomeriggio": "spuntino-mela-parmigiano",
+            "cena": "hamburger-macellaio-pure"
+          },
+          "walking_pad": "15 min alle 13:35 + 20 min alle 18:00"
+        },
+        {
+          "day_index": 9,
+          "day_name": "Mercoledì",
+          "note": "Pranzo veloce",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-noci-parmigiano",
+            "pranzo": "pasta-aglio-olio-tonno",
+            "merenda_pomeriggio": "spuntino-uovo-sodo",
+            "cena": "salmone-ricotta-spinaci"
+          },
+          "walking_pad": "15 min alle 13:25 + 20 min alle 18:00"
+        },
+        {
+          "day_index": 10,
+          "day_name": "Giovedì",
+          "note": "Cena lampo (ore 20:00: rientro serale)",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-yogurt-cannella-noci",
+            "pranzo": "pasta-ragu",
+            "merenda_pomeriggio": "spuntino-mela-parmigiano",
+            "cena": "passato-verdure-cannellini"
+          },
+          "walking_pad": "15 min alle 13:35 + 20 min alle 18:00"
+        },
+        {
+          "day_index": 11,
+          "day_name": "Venerdì",
+          "note": "Pranzo rapido",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-noci-parmigiano",
+            "pranzo": "pasta-aglio-olio-tonno",
+            "merenda_pomeriggio": "spuntino-fesa-finocchio",
+            "cena": "wrap-tacchino-parmigiano"
+          },
+          "walking_pad": "15 min alle 13:25 + 20 min alle 18:00"
+        },
+        {
+          "day_index": 12,
+          "day_name": "Sabato",
+          "note": "Giornata relax in famiglia | Panini da Giovanni",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-noci-parmigiano",
+            "pranzo": "toast-prosciutto-formaggio",
+            "merenda_pomeriggio": "spuntino-mela-parmigiano",
+            "cena": "panini-da-giovanni"
+          },
+          "walking_pad": "Camminata libera con i bambini"
+        },
+        {
+          "day_index": 13,
+          "day_name": "Domenica",
+          "note": "Pranzo in famiglia & Meal Prep",
+          "slots": {
+            "colazione": "colazione-caffe-idratazione",
+            "merenda_mattina": "spuntino-yogurt-cannella-noci",
+            "pranzo": "pranzo-da-suocera",
+            "merenda_pomeriggio": "spuntino-noci-parmigiano",
+            "cena": "omelette-cotto-zucchine"
+          },
+          "walking_pad": "Passeggiata domenicale"
+        }
+      ]
+    }
+  ]
+}

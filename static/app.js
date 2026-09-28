@@ -160,6 +160,9 @@ function setupEventListeners() {
   document.getElementById('act-auto-calories').addEventListener('change', updateModalCalories);
   document.getElementById('act-duration').addEventListener('input', updateModalCalories);
   document.getElementById('act-speed').addEventListener('input', updateModalCalories);
+  document.getElementById('act-distance').addEventListener('input', () => {
+    document.getElementById('act-distance').dataset.auto = 'false';
+  });
   document.getElementById('act-type').addEventListener('change', updateModalCalories);
   document.getElementById('form-activity').addEventListener('submit', handleSaveActivity);
 
@@ -1336,8 +1339,15 @@ function calculateEstimatedCalories(durationMinutes, speedKmh) {
 function updateModalCalories() {
   const autoChecked = document.getElementById('act-auto-calories').checked;
   const calInput = document.getElementById('act-calories');
-  const dur = document.getElementById('act-duration').value;
-  const spd = document.getElementById('act-speed').value;
+  const distInput = document.getElementById('act-distance');
+  const dur = parseFloat(document.getElementById('act-duration').value) || 0;
+  const spd = parseFloat(document.getElementById('act-speed').value) || 0;
+
+  if (distInput && (distInput.dataset.auto !== 'false' || !distInput.value)) {
+    const calcDist = ((dur / 60) * spd).toFixed(2);
+    distInput.value = calcDist;
+    distInput.dataset.auto = 'true';
+  }
 
   if (autoChecked) {
     const est = calculateEstimatedCalories(dur, spd);
@@ -1379,6 +1389,12 @@ function renderActivitiesKPIs() {
 
   const totalMin = thisWeekActs.reduce((sum, a) => sum + (parseFloat(a.duration_minutes) || 0), 0);
   const totalCal = thisWeekActs.reduce((sum, a) => sum + (parseFloat(a.calories) || 0), 0);
+  const totalKm = thisWeekActs.reduce((sum, a) => {
+    const d = a.distance_km != null
+      ? parseFloat(a.distance_km)
+      : ((parseFloat(a.duration_minutes) || 0) / 60) * (parseFloat(a.speed_kmh) || 0);
+    return sum + (isNaN(d) ? 0 : d);
+  }, 0);
   const sessionCount = thisWeekActs.length;
 
   let totalSpeedWeighted = 0;
@@ -1390,7 +1406,7 @@ function renderActivitiesKPIs() {
   if (kpiMinutes) kpiMinutes.textContent = `${Math.round(totalMin)} min`;
   if (kpiCalories) kpiCalories.textContent = `${Math.round(totalCal)} kcal`;
   if (kpiSessions) kpiSessions.textContent = `${sessionCount} sessioni`;
-  if (kpiAvgSpeed) kpiAvgSpeed.textContent = sessionCount > 0 ? `Velocità media: ${avgSpeed.toFixed(1)} km/h` : "Velocità media: -- km/h";
+  if (kpiAvgSpeed) kpiAvgSpeed.textContent = sessionCount > 0 ? `Distanza: ${totalKm.toFixed(2)} km • Media: ${avgSpeed.toFixed(1)} km/h` : "Distanza: 0.00 km • Media: -- km/h";
 
   const targetMin = 150;
   const pct = Math.min(100, Math.round((totalMin / targetMin) * 100));
@@ -1446,6 +1462,13 @@ function renderActivitiesList() {
       ? `${formatDateDisplay(act.date.split('T')[0])} ${act.date.includes('T') ? act.date.split('T')[1].substring(0, 5) : ''}`
       : act.date;
 
+    let distVal = null;
+    if (act.distance_km != null) {
+      distVal = parseFloat(act.distance_km).toFixed(2);
+    } else if (act.duration_minutes && act.speed_kmh) {
+      distVal = ((parseFloat(act.duration_minutes) / 60) * parseFloat(act.speed_kmh)).toFixed(2);
+    }
+
     return `
       <div class="activity-card">
         <div class="act-left">
@@ -1463,7 +1486,7 @@ function renderActivitiesList() {
         <div class="act-right">
           <div class="act-stat">
             <div class="act-stat-val">⏱️ ${act.duration_minutes} min</div>
-            <div class="act-stat-sub">💨 ${act.speed_kmh ? act.speed_kmh + ' km/h' : '-'}</div>
+            <div class="act-stat-sub">${distVal ? '📍 ' + distVal + ' km • ' : ''}💨 ${act.speed_kmh ? act.speed_kmh + ' km/h' : '-'}</div>
           </div>
           <div class="act-stat">
             <div class="act-stat-val" style="color: var(--accent);">🔥 ${Math.round(act.calories || 0)} kcal</div>
@@ -1500,9 +1523,21 @@ function openActivityModal(preset = null) {
   const minutes = String(now.getMinutes()).padStart(2, '0');
   document.getElementById('act-datetime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
 
+  const dur = preset && preset.duration ? preset.duration : 20;
+  const spd = preset && preset.speed ? preset.speed : 4.0;
   document.getElementById('act-type').value = preset && preset.type ? preset.type : 'walking_pad';
-  document.getElementById('act-duration').value = preset && preset.duration ? preset.duration : 20;
-  document.getElementById('act-speed').value = preset && preset.speed ? preset.speed : 4.0;
+  document.getElementById('act-duration').value = dur;
+  document.getElementById('act-speed').value = spd;
+
+  const distInput = document.getElementById('act-distance');
+  if (preset && preset.distance) {
+    distInput.value = preset.distance;
+    distInput.dataset.auto = 'false';
+  } else {
+    distInput.value = ((dur / 60) * spd).toFixed(2);
+    distInput.dataset.auto = 'true';
+  }
+
   document.getElementById('act-description').value = preset && preset.description ? preset.description : '';
   document.getElementById('act-notes').value = '';
   document.getElementById('act-auto-calories').checked = true;
@@ -1522,6 +1557,7 @@ async function handleSaveActivity(e) {
   const actType = document.getElementById('act-type').value;
   const duration = parseFloat(document.getElementById('act-duration').value);
   const speed = parseFloat(document.getElementById('act-speed').value) || 4.0;
+  const distVal = document.getElementById('act-distance').value !== '' ? parseFloat(document.getElementById('act-distance').value) : null;
   const autoCals = document.getElementById('act-auto-calories').checked;
   const calories = parseFloat(document.getElementById('act-calories').value) || 0;
   const desc = document.getElementById('act-description').value.trim();
@@ -1533,6 +1569,7 @@ async function handleSaveActivity(e) {
     activity_type: actType,
     description: desc,
     duration_minutes: duration,
+    distance_km: distVal,
     speed_kmh: speed,
     calories: calories,
     auto_calories: autoCals,

@@ -105,6 +105,7 @@ class ActivityEntry(BaseModel):
     activity_type: str = "walking_pad"  # walking_pad, outdoor_walking, cyclette
     description: str = ""
     duration_minutes: float
+    distance_km: Optional[float] = None
     speed_kmh: Optional[float] = 4.0
     calories: Optional[float] = 0.0
     auto_calories: bool = True

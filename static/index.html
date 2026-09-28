@@ -305,33 +305,44 @@
         </div>
       </div>
 
+      <!-- Activity Time Range Filter -->
+      <div class="activity-filter-bar">
+        <span class="filter-label">Periodo statistiche:</span>
+        <div class="filter-pills" id="activity-period-filter">
+          <button type="button" class="btn btn-outline btn-sm active" data-period="rolling7">🔄 Ultimi 7 Giorni</button>
+          <button type="button" class="btn btn-outline btn-sm" data-period="this_week">📅 Settimana Corrente (Lun-Dom)</button>
+          <button type="button" class="btn btn-outline btn-sm" data-period="last_week">⏪ Settimana Scorsa</button>
+          <button type="button" class="btn btn-outline btn-sm" data-period="all">🌐 Tutte</button>
+        </div>
+      </div>
+
       <!-- Weekly Stats Cards -->
       <div class="metrics-grid">
         <div class="metric-card">
           <div class="metric-header">
             <span class="metric-icon">⏱️</span>
-            <span class="metric-label">Minuti Questa Settimana</span>
+            <span class="metric-label" id="lbl-act-minutes">Minuti (Ultimi 7gg)</span>
           </div>
           <div class="metric-value" id="kpi-act-minutes">0 min</div>
           <div class="progress-bar-container">
             <div class="progress-bar-fill" id="act-progress-fill" style="width: 0%;"></div>
           </div>
-          <div class="metric-sub" id="act-progress-text">Obiettivo: 150 min/settimana</div>
+          <div class="metric-sub" id="act-progress-text">Obiettivo: 150 min / 7gg</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-header">
             <span class="metric-icon">🔥</span>
-            <span class="metric-label">Calorie Bruciate (Sett.)</span>
+            <span class="metric-label" id="lbl-act-calories">Calorie Bruciate (7gg)</span>
           </div>
           <div class="metric-value" id="kpi-act-calories">0 kcal</div>
-          <div class="metric-sub text-muted">Stima energetica cardio</div>
+          <div class="metric-sub text-muted" id="sub-act-calories">Stima energetica cardio</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-header">
             <span class="metric-icon">👟</span>
-            <span class="metric-label">Sessioni & Distanza</span>
+            <span class="metric-label" id="lbl-act-sessions">Sessioni & Distanza</span>
           </div>
           <div class="metric-value" id="kpi-act-sessions">0 sessioni</div>
           <div class="metric-sub" id="kpi-act-avg-speed">Distanza: 0.00 km • Media: -- km/h</div>

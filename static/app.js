@@ -5,6 +5,7 @@ let shoppingList = {};
 let mealPrep = { week1_prep: [], week2_prep: [] };
 let weights = [];
 let activities = [];
+let activeActivityPeriod = 'rolling7'; // Default: Ultimi 7 Giorni (include sessioni recenti senza azzerare il lunedì)
 let activeWeekView = 'w1'; // Default: Settimana 1
 let activeShoppingWeek = '1'; // Default: Settimana 1 (Spesa della Domenica)
 let currentSlotContext = null; // { week_number, day_index, slot_name, current_recipe_id }
@@ -174,6 +175,16 @@ function setupEventListeners() {
         speed: btn.dataset.speed,
         description: btn.dataset.desc
       });
+    });
+  });
+
+  // Activity Period Filter buttons
+  document.querySelectorAll('#activity-period-filter button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('#activity-period-filter button').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      activeActivityPeriod = e.target.dataset.period;
+      renderActivitiesKPIs();
     });
   });
 }
@@ -1373,32 +1384,70 @@ function renderActivitiesKPIs() {
   if (countBadge) countBadge.textContent = `${activities.length} sessioni`;
 
   const now = new Date();
-  const dayOfWeek = (now.getDay() + 6) % 7;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - dayOfWeek);
-  monday.setHours(0, 0, 0, 0);
+  let start = new Date(now);
+  let end = new Date(now);
+  let labelPeriod = "Ultimi 7gg";
+  let targetDesc = "target OMS 7gg";
 
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
+  if (activeActivityPeriod === 'rolling7') {
+    start.setDate(now.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    labelPeriod = "Ultimi 7gg";
+    targetDesc = "target OMS 7gg";
+  } else if (activeActivityPeriod === 'this_week') {
+    const dayOfWeek = (now.getDay() + 6) % 7; // Monday = 0
+    start.setDate(now.getDate() - dayOfWeek);
+    start.setHours(0, 0, 0, 0);
+    end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    labelPeriod = "Questa Settimana";
+    targetDesc = "target settimanale";
+  } else if (activeActivityPeriod === 'last_week') {
+    const dayOfWeek = (now.getDay() + 6) % 7;
+    const thisMonday = new Date(now);
+    thisMonday.setDate(now.getDate() - dayOfWeek);
+    thisMonday.setHours(0, 0, 0, 0);
+    start = new Date(thisMonday);
+    start.setDate(thisMonday.getDate() - 7);
+    start.setHours(0, 0, 0, 0);
+    end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    labelPeriod = "Settimana Scorsa";
+    targetDesc = "target sett. scorsa";
+  } else if (activeActivityPeriod === 'all') {
+    start = new Date(0);
+    end = new Date(8640000000000000);
+    labelPeriod = "Tutte";
+    targetDesc = "totale cumulativo";
+  }
 
-  const thisWeekActs = activities.filter(a => {
-    const d = new Date(a.date);
-    return d >= monday && d <= sunday;
+  const lblMin = document.getElementById('lbl-act-minutes');
+  const lblCal = document.getElementById('lbl-act-calories');
+  if (lblMin) lblMin.textContent = `Minuti (${labelPeriod})`;
+  if (lblCal) lblCal.textContent = `Calorie (${labelPeriod})`;
+
+  const filteredActs = activities.filter(a => {
+    if (!a.date) return false;
+    const cleanDateStr = a.date.includes('T') ? a.date : `${a.date}T12:00:00`;
+    const d = new Date(cleanDateStr);
+    return d >= start && d <= end;
   });
 
-  const totalMin = thisWeekActs.reduce((sum, a) => sum + (parseFloat(a.duration_minutes) || 0), 0);
-  const totalCal = thisWeekActs.reduce((sum, a) => sum + (parseFloat(a.calories) || 0), 0);
-  const totalKm = thisWeekActs.reduce((sum, a) => {
+  const totalMin = filteredActs.reduce((sum, a) => sum + (parseFloat(a.duration_minutes) || 0), 0);
+  const totalCal = filteredActs.reduce((sum, a) => sum + (parseFloat(a.calories) || 0), 0);
+  const totalKm = filteredActs.reduce((sum, a) => {
     const d = a.distance_km != null
       ? parseFloat(a.distance_km)
       : ((parseFloat(a.duration_minutes) || 0) / 60) * (parseFloat(a.speed_kmh) || 0);
     return sum + (isNaN(d) ? 0 : d);
   }, 0);
-  const sessionCount = thisWeekActs.length;
+  const sessionCount = filteredActs.length;
 
   let totalSpeedWeighted = 0;
-  thisWeekActs.forEach(a => {
+  filteredActs.forEach(a => {
     totalSpeedWeighted += (parseFloat(a.speed_kmh) || 4.0) * (parseFloat(a.duration_minutes) || 0);
   });
   const avgSpeed = totalMin > 0 ? (totalSpeedWeighted / totalMin) : 0;
@@ -1411,7 +1460,7 @@ function renderActivitiesKPIs() {
   const targetMin = 150;
   const pct = Math.min(100, Math.round((totalMin / targetMin) * 100));
   if (progressFill) progressFill.style.width = `${pct}%`;
-  if (progressText) progressText.textContent = `${Math.round(totalMin)} / ${targetMin} min (${pct}% target OMS)`;
+  if (progressText) progressText.textContent = `${Math.round(totalMin)} / ${targetMin} min (${pct}% ${targetDesc})`;
 
   if (kpiStatus) {
     if (totalMin >= 150) {
@@ -1424,7 +1473,7 @@ function renderActivitiesKPIs() {
       kpiStatus.textContent = "Buon Inizio 🔥";
       kpiStatus.className = "metric-value text-accent";
     } else {
-      kpiStatus.textContent = "Inizio Settimana ⚡";
+      kpiStatus.textContent = sessionCount > 0 ? "Movimento Avviato ⚡" : "Nessuna Attività 💤";
       kpiStatus.className = "metric-value";
     }
   }

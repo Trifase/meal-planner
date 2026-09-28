@@ -62,8 +62,8 @@ Il modo più semplice per eseguire l'applicazione è tramite Docker Compose (por
 
 1. **Clona la repository:**
    ```bash
-   git clone https://github.com/Trifase/meal-planner.git
-   cd meal-planner
+   git clone https://github.com/Trifase/trifitness.git
+   cd trifitness
    ```
 
 2. **Avvia il container:**
@@ -109,7 +109,7 @@ L'applicazione risponderà all'indirizzo `http://localhost:9999`.
 ## 📂 Struttura del Progetto
 
 ```text
-meal-planner/
+trifitness/
 ├── data/
 │   ├── recipes.json       # Database ricette con porzioni e ingredienti
 │   ├── plan.json          # Stato del calendario dei pasti

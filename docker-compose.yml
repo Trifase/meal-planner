@@ -1,7 +1,7 @@
 services:
-  meal-planner:
+  trifitness:
     build: .
-    container_name: meal-planner
+    container_name: trifitness
     restart: unless-stopped
     ports:
       - "9999:9999"

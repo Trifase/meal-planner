@@ -1,6 +1,7 @@
-# 🥑 Metabolic Meal Planner
+# ⚡ Trifitness
+*(Precedentemente Metabolic Meal Planner)*
 
-Applicazione web self-hosted, leggera e reattiva, progettata per la pianificazione settimanale dei pasti familiari, la generazione automatica della lista della spesa domenicale divisa per reparti del supermercato, il calcolo dinamico delle porzioni e l'organizzazione del meal prep.
+Applicazione web self-hosted, leggera e reattiva, progettata per il monitoraggio integrato della salute metabolica: pianificazione dei pasti familiari, generazione automatica della lista spesa per reparti, meal prep, tracciamento del peso con media mobile e bioimpedenza, e registro attività fisica con stima calorie per tapis roulant / walking pad.
 
 Ideata per girare senza sforzo su home server Linux (Docker) con persistenza pura su file JSON (zero configurazioni complesse di database).
 

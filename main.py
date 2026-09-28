@@ -21,7 +21,7 @@ PLAN_FILE = DATA_DIR / "plan.json"
 WEIGHT_FILE = DATA_DIR / "weight.json"
 ACTIVITIES_FILE = DATA_DIR / "activities.json"
 
-app = FastAPI(title="Metabolic Meal Planner - Anti-Insulino-Resistenza", version="1.0.0")
+app = FastAPI(title="Trifitness - Metabolic Health & Lifestyle", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,

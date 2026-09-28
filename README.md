@@ -41,6 +41,18 @@ Ideata per girare senza sforzo su home server Linux (Docker) con persistenza pur
 * Rilevamento automatico delle basi da preparare la domenica (ragù, cereali lessati per amido resistente, passati di verdura, uova sode).
 * Distinzione chiara tra preparazioni da tenere in frigo per la settimana e vaschette destinate al congelatore.
 
+### 5. ⚖️ Monitoraggio Peso & Composizione Corporea
+* **Tracciamento Peso & Media Mobile (7gg):** Algoritmo integrato che calcola la media mobile per smussare le fluttuazioni d'acqua e mostrare il reale andamento del dimagrimento.
+* **Stima Tasso di Dimagrimento:** Calcolo automatico del ritmo settimanale (kg/settimana) con indicazione dello stato rispetto al target sano (0.5 - 1.0 kg/sett.).
+* **Grafico SVG Interattivo:** Rappresentazione grafica vettoriale leggera e offline (zero CDN o librerie esterne) con griglia e tooltip dettagliati al passaggio del mouse.
+* **Supporto Bioimpedenza & Misure:** Campi opzionali per % massa grassa, massa muscolare (kg), livello grasso viscerale, % idratazione, girovita e fianchi (cm).
+
+### 6. 🏃 Attività Fisica & Tapis Roulant / Walking Pad
+* **Preset Rapidi in 1 Clic:** Pulsanti dedicati per sessioni standard (*15 min @ 3.5 km/h Post-Pranzo*, *20 min @ 4.0 km/h Stacco Serale*, *30 min @ 4.0 km/h Sessione Lunga*).
+* **Stima Metabolica Automatica delle Calorie:** Calcolo energetico proporzionato in tempo reale al peso corporeo attuale e alla velocità media, con flag per disattivazione e inserimento manuale.
+* **Barra di Avanzamento Obiettivo OMS:** Monitoraggio settimanale dei minuti di attività rispetto al target raccomandato di 150 minuti/settimana.
+* **Predisposizione Multi-Attività:** Supporto nativo per Walking Pad, camminata all'aperto ed espandibile a cyclette e altro.
+
 ---
 
 ## 🐳 Avvio Rapido con Docker Compose
@@ -99,7 +111,9 @@ L'applicazione risponderà all'indirizzo `http://localhost:9999`.
 meal-planner/
 ├── data/
 │   ├── recipes.json       # Database ricette con porzioni e ingredienti
-│   └── plan.json          # Stato del calendario dei pasti
+│   ├── plan.json          # Stato del calendario dei pasti
+│   ├── weight.json        # Storico misurazioni peso e bioimpedenza
+│   └── activities.json    # Storico sessioni di attività fisica
 ├── static/
 │   ├── index.html         # Interfaccia grafica SPA
 │   ├── style.css          # Design responsive e colori delle sezioni

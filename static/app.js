@@ -3,6 +3,8 @@ let recipes = [];
 let plan = { weeks: [] };
 let shoppingList = {};
 let mealPrep = { week1_prep: [], week2_prep: [] };
+let weights = [];
+let activities = [];
 let activeWeekView = 'w1'; // Default: Settimana 1
 let activeShoppingWeek = '1'; // Default: Settimana 1 (Spesa della Domenica)
 let currentSlotContext = null; // { week_number, day_index, slot_name, current_recipe_id }
@@ -38,12 +40,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Load all API data
 async function loadAllData() {
   try {
-    const [recRes, planRes] = await Promise.all([
+    const [recRes, planRes, weightRes] = await Promise.all([
       fetch('/api/recipes'),
-      fetch('/api/plan')
+      fetch('/api/plan'),
+      fetch('/api/weight')
     ]);
     recipes = await recRes.json();
     plan = await planRes.json();
+    weights = await weightRes.json();
     renderCalendar();
     renderRecipes();
   } catch (err) {
@@ -67,6 +71,10 @@ function setupNavigation() {
         await loadShoppingList(activeShoppingWeek);
       } else if (target === 'mealprep') {
         await loadMealPrep();
+      } else if (target === 'weight') {
+        await loadWeightData();
+      } else if (target === 'activities') {
+        await loadActivitiesData();
       }
     });
   });
@@ -137,6 +145,34 @@ function setupEventListeners() {
   document.getElementById('btn-close-slot-modal').addEventListener('click', closeSlotModal);
   document.getElementById('btn-clear-slot').addEventListener('click', clearCurrentSlot);
   document.getElementById('slot-modal-search').addEventListener('input', renderSlotRecipeOptions);
+
+  // Weight Modal & Bioimpedance
+  document.getElementById('btn-open-weight-modal').addEventListener('click', () => openWeightModal());
+  document.getElementById('btn-close-weight-modal').addEventListener('click', closeWeightModal);
+  document.getElementById('btn-cancel-weight').addEventListener('click', closeWeightModal);
+  document.getElementById('btn-toggle-bioimpedance').addEventListener('click', toggleBioimpedanceFields);
+  document.getElementById('form-weight').addEventListener('submit', handleSaveWeight);
+
+  // Activities Modal & Presets
+  document.getElementById('btn-open-activity-modal').addEventListener('click', () => openActivityModal());
+  document.getElementById('btn-close-activity-modal').addEventListener('click', closeActivityModal);
+  document.getElementById('btn-cancel-activity').addEventListener('click', closeActivityModal);
+  document.getElementById('act-auto-calories').addEventListener('change', updateModalCalories);
+  document.getElementById('act-duration').addEventListener('input', updateModalCalories);
+  document.getElementById('act-speed').addEventListener('input', updateModalCalories);
+  document.getElementById('act-type').addEventListener('change', updateModalCalories);
+  document.getElementById('form-activity').addEventListener('submit', handleSaveActivity);
+
+  // Quick Preset buttons for Walking Pad
+  document.querySelectorAll('.btn-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      openActivityModal({
+        duration: btn.dataset.min,
+        speed: btn.dataset.speed,
+        description: btn.dataset.desc
+      });
+    });
+  });
 }
 
 function setWeekView(view, targetBtn) {
@@ -902,3 +938,631 @@ function renderPrepTasks(tasks, weekKey) {
     `;
   }).join('');
 }
+
+/* ==========================================================================
+   WEIGHT & BIOIMPEDANCE TRACKING LOGIC
+   ========================================================================== */
+
+async function loadWeightData() {
+  try {
+    const res = await fetch('/api/weight');
+    weights = await res.json();
+    weights.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    computeMovingAverages();
+    renderWeightKPIs();
+    renderWeightChart();
+    renderWeightTable();
+  } catch (err) {
+    console.error("Errore caricamento dati peso:", err);
+  }
+}
+
+function computeMovingAverages() {
+  for (let i = 0; i < weights.length; i++) {
+    const currentDate = new Date(weights[i].date + 'T00:00:00');
+    const windowEntries = weights.filter(w => {
+      const d = new Date(w.date + 'T00:00:00');
+      const diffDays = (currentDate - d) / (1000 * 60 * 60 * 24);
+      return diffDays >= 0 && diffDays <= 6;
+    });
+
+    const sum = windowEntries.reduce((acc, curr) => acc + curr.weight, 0);
+    weights[i].movingAvg = sum / windowEntries.length;
+  }
+}
+
+function renderWeightKPIs() {
+  const kpiCurrent = document.getElementById('kpi-current-weight');
+  const kpiDelta = document.getElementById('kpi-weight-delta');
+  const kpiMA = document.getElementById('kpi-moving-avg');
+  const kpiLossRate = document.getElementById('kpi-loss-rate');
+  const kpiLossSub = document.getElementById('kpi-loss-sub');
+  const kpiBodyComp = document.getElementById('kpi-body-comp');
+  const kpiBodyCompSub = document.getElementById('kpi-body-comp-sub');
+  const countBadge = document.getElementById('weight-history-count');
+
+  if (countBadge) countBadge.textContent = `${weights.length} registrazioni`;
+
+  if (!weights || weights.length === 0) {
+    if (kpiCurrent) kpiCurrent.textContent = "-- kg";
+    if (kpiDelta) kpiDelta.textContent = "Nessuna misurazione";
+    if (kpiMA) kpiMA.textContent = "-- kg";
+    if (kpiLossRate) kpiLossRate.textContent = "-- kg/sett.";
+    if (kpiBodyComp) kpiBodyComp.textContent = "-- cm";
+    return;
+  }
+
+  const latest = weights[weights.length - 1];
+  const first = weights[0];
+
+  if (kpiCurrent) kpiCurrent.textContent = `${latest.weight.toFixed(1)} kg`;
+
+  if (kpiDelta) {
+    if (weights.length > 1) {
+      const totalDelta = latest.weight - first.weight;
+      const sign = totalDelta > 0 ? "+" : "";
+      kpiDelta.innerHTML = `<span class="${totalDelta <= 0 ? 'delta-down' : 'delta-up'}">${sign}${totalDelta.toFixed(1)} kg</span> da inizio (${formatDateDisplay(first.date)})`;
+    } else {
+      kpiDelta.textContent = "Valore iniziale di base";
+    }
+  }
+
+  if (kpiMA) {
+    kpiMA.textContent = latest.movingAvg ? `${latest.movingAvg.toFixed(1)} kg` : `${latest.weight.toFixed(1)} kg`;
+  }
+
+  // Loss Rate Estimation (kg / week)
+  if (kpiLossRate && kpiLossSub) {
+    if (weights.length >= 2) {
+      const dFirst = new Date(first.date + 'T00:00:00');
+      const dLast = new Date(latest.date + 'T00:00:00');
+      const daysDiff = (dLast - dFirst) / (1000 * 60 * 60 * 24);
+
+      if (daysDiff >= 1) {
+        const deltaWeight = latest.weight - first.weight;
+        const ratePerWeek = (deltaWeight / daysDiff) * 7;
+        const sign = ratePerWeek > 0 ? "+" : "";
+        kpiLossRate.textContent = `${sign}${ratePerWeek.toFixed(2)} kg/sett.`;
+
+        if (ratePerWeek <= -0.4 && ratePerWeek >= -1.1) {
+          kpiLossSub.textContent = "Target ideale (0.5 - 1.0 kg/sett.) ✨";
+          kpiLossSub.className = "metric-sub text-success";
+        } else if (ratePerWeek < -1.1) {
+          kpiLossSub.textContent = "Calo rapido (proteggi la massa magra)";
+          kpiLossSub.className = "metric-sub text-warning";
+        } else if (ratePerWeek > 0) {
+          kpiLossSub.textContent = "Leggero incremento o ritenzione";
+          kpiLossSub.className = "metric-sub text-muted";
+        } else {
+          kpiLossSub.textContent = "Stabile / ritmo iniziale costante";
+          kpiLossSub.className = "metric-sub text-muted";
+        }
+      } else {
+        kpiLossRate.textContent = "-- kg/sett.";
+        kpiLossSub.textContent = "Inserisci pesate in giorni differenti";
+      }
+    } else {
+      kpiLossRate.textContent = "-- kg/sett.";
+      kpiLossSub.textContent = "Serve almeno una seconda pesata";
+    }
+  }
+
+  // Body Composition KPI
+  if (kpiBodyComp && kpiBodyCompSub) {
+    let compParts = [];
+    if (latest.body_fat) compParts.push(`Grasso: ${latest.body_fat}%`);
+    if (latest.visceral_fat) compParts.push(`Visc: ${latest.visceral_fat}`);
+    if (latest.muscle) compParts.push(`Muscolo: ${latest.muscle}kg`);
+
+    if (latest.waist) {
+      kpiBodyComp.textContent = `${latest.waist} cm`;
+      kpiBodyCompSub.textContent = compParts.length > 0 ? compParts.join(' • ') : "Girovita rilevato";
+    } else if (latest.body_fat) {
+      kpiBodyComp.textContent = `${latest.body_fat}%`;
+      kpiBodyCompSub.textContent = compParts.length > 0 ? compParts.join(' • ') : "Massa grassa stimata";
+    } else {
+      kpiBodyComp.textContent = "-- cm";
+      kpiBodyCompSub.textContent = "Nessun dato di circonferenza";
+    }
+  }
+}
+
+function renderWeightChart() {
+  const container = document.getElementById('weight-chart-container');
+  if (!container) return;
+
+  if (!weights || weights.length === 0) {
+    container.innerHTML = `<p style="text-align: center; color: #94a3b8; padding: 60px 0; font-size: 13px;">Nessun dato registrato. Clicca su '+ Registra Peso' per visualizzare il grafico.</p>`;
+    return;
+  }
+
+  const width = 720;
+  const height = 240;
+  const padLeft = 45;
+  const padRight = 30;
+  const padTop = 20;
+  const padBottom = 35;
+  const plotWidth = width - padLeft - padRight;
+  const plotHeight = height - padTop - padBottom;
+
+  const allValues = [];
+  weights.forEach(w => {
+    allValues.push(w.weight);
+    if (w.movingAvg) allValues.push(w.movingAvg);
+  });
+
+  let minVal = Math.min(...allValues);
+  let maxVal = Math.max(...allValues);
+
+  const range = maxVal - minVal;
+  const buffer = range > 2 ? range * 0.15 : 1.5;
+  minVal = Math.floor(minVal - buffer);
+  maxVal = Math.ceil(maxVal + buffer);
+  if (maxVal <= minVal) maxVal = minVal + 3;
+
+  const getY = (val) => padTop + (1 - (val - minVal) / (maxVal - minVal)) * plotHeight;
+  const getX = (idx) => {
+    if (weights.length === 1) return padLeft + plotWidth / 2;
+    return padLeft + (idx / (weights.length - 1)) * plotWidth;
+  };
+
+  // Horizontal Grid Lines & Y labels
+  const steps = 4;
+  let gridLines = '';
+  for (let s = 0; s <= steps; s++) {
+    const yVal = minVal + (s / steps) * (maxVal - minVal);
+    const yPos = getY(yVal);
+    gridLines += `
+      <line x1="${padLeft}" y1="${yPos}" x2="${width - padRight}" y2="${yPos}" stroke="#f1f5f9" stroke-width="1" />
+      <text x="${padLeft - 8}" y="${yPos + 4}" font-size="10" fill="#94a3b8" text-anchor="end">${yVal.toFixed(1)}</text>
+    `;
+  }
+
+  // Weight Points & Moving Avg Lines
+  let weightPoints = [];
+  let avgPoints = [];
+  let dots = '';
+  let xLabels = '';
+
+  const labelStep = Math.max(1, Math.ceil(weights.length / 8));
+
+  weights.forEach((w, i) => {
+    const x = getX(i);
+    const yW = getY(w.weight);
+    weightPoints.push(`${x},${yW}`);
+
+    if (w.movingAvg) {
+      const yAvg = getY(w.movingAvg);
+      avgPoints.push(`${x},${yAvg}`);
+    }
+
+    const tooltip = `${formatDateDisplay(w.date)}: ${w.weight.toFixed(1)} kg${w.movingAvg ? ' (MA: ' + w.movingAvg.toFixed(1) + ')' : ''}${w.waist ? ' • Girovita: ' + w.waist + ' cm' : ''}`;
+    dots += `
+      <circle cx="${x}" cy="${yW}" r="4" fill="#2563eb" stroke="#ffffff" stroke-width="1.5">
+        <title>${tooltip}</title>
+      </circle>
+    `;
+
+    if (i % labelStep === 0 || i === weights.length - 1) {
+      const dateParts = w.date.split('-');
+      const shortDate = `${dateParts[2]}/${dateParts[1]}`;
+      xLabels += `<text x="${x}" y="${height - 10}" font-size="10.5" fill="#64748b" text-anchor="middle">${shortDate}</text>`;
+    }
+  });
+
+  const weightPolyline = weightPoints.length > 1
+    ? `<polyline points="${weightPoints.join(' ')}" fill="none" stroke="#93c5fd" stroke-width="1.5" stroke-dasharray="3 3" />`
+    : '';
+
+  const avgPolyline = avgPoints.length > 1
+    ? `<polyline points="${avgPoints.join(' ')}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />`
+    : '';
+
+  const svg = `
+    <svg viewBox="0 0 ${width} ${height}" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
+      ${gridLines}
+      ${weightPolyline}
+      ${avgPolyline}
+      ${dots}
+      ${xLabels}
+    </svg>
+  `;
+
+  container.innerHTML = svg;
+}
+
+function renderWeightTable() {
+  const tbody = document.getElementById('weight-history-tbody');
+  if (!tbody) return;
+
+  if (!weights || weights.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 24px;">Nessuna misurazione presente.</td></tr>`;
+    return;
+  }
+
+  const sorted = [...weights].reverse();
+
+  tbody.innerHTML = sorted.map((entry) => {
+    const origIdx = weights.findIndex(w => w.id === entry.id);
+    let deltaHtml = `<span class="delta-eq">-</span>`;
+    if (origIdx > 0) {
+      const prev = weights[origIdx - 1];
+      const delta = entry.weight - prev.weight;
+      if (delta < 0) {
+        deltaHtml = `<span class="delta-down">${delta.toFixed(1)} kg</span>`;
+      } else if (delta > 0) {
+        deltaHtml = `<span class="delta-up">+${delta.toFixed(1)} kg</span>`;
+      } else {
+        deltaHtml = `<span class="delta-eq">0.0 kg</span>`;
+      }
+    }
+
+    return `
+      <tr>
+        <td><strong>${formatDateDisplay(entry.date)}</strong></td>
+        <td><strong style="color: var(--primary);">${entry.weight.toFixed(1)} kg</strong></td>
+        <td>${deltaHtml}</td>
+        <td>${entry.movingAvg ? entry.movingAvg.toFixed(1) + ' kg' : '-'}</td>
+        <td>${entry.body_fat ? entry.body_fat.toFixed(1) + '%' : '-'}</td>
+        <td>${entry.muscle ? entry.muscle.toFixed(1) + ' kg' : '-'}</td>
+        <td>${entry.visceral_fat ? entry.visceral_fat : '-'}</td>
+        <td>${entry.waist ? entry.waist + ' cm' : '-'}</td>
+        <td style="color: var(--text-muted); font-size: 11px; max-width: 180px; overflow: hidden; text-overflow: ellipsis;">${entry.notes || '-'}</td>
+        <td style="text-align: right;">
+          <button class="btn btn-sm btn-outline text-danger btn-del-weight" data-id="${entry.id}" title="Elimina misurazione">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  document.querySelectorAll('.btn-del-weight').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.currentTarget.dataset.id;
+      if (confirm("Vuoi davvero eliminare questa misurazione del peso?")) {
+        const res = await fetch(`/api/weight/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          await loadWeightData();
+        }
+      }
+    });
+  });
+}
+
+function openWeightModal(entry = null) {
+  const modal = document.getElementById('modal-add-weight');
+  document.getElementById('edit-weight-id').value = entry ? entry.id : '';
+  document.getElementById('weight-date').value = entry ? entry.date : new Date().toISOString().split('T')[0];
+  document.getElementById('weight-val').value = entry ? entry.weight : '';
+  document.getElementById('weight-body-fat').value = entry && entry.body_fat ? entry.body_fat : '';
+  document.getElementById('weight-muscle').value = entry && entry.muscle ? entry.muscle : '';
+  document.getElementById('weight-visceral').value = entry && entry.visceral_fat ? entry.visceral_fat : '';
+  document.getElementById('weight-water').value = entry && entry.water ? entry.water : '';
+  document.getElementById('weight-waist').value = entry && entry.waist ? entry.waist : '';
+  document.getElementById('weight-hips').value = entry && entry.hips ? entry.hips : '';
+  document.getElementById('weight-notes').value = entry && entry.notes ? entry.notes : '';
+
+  const hasBio = entry && (entry.body_fat || entry.muscle || entry.visceral_fat || entry.waist);
+  const bioFields = document.getElementById('bioimpedance-fields');
+  const arrow = document.getElementById('arrow-bioimpedance');
+  if (hasBio) {
+    bioFields.classList.remove('hidden');
+    arrow.classList.add('open');
+  } else {
+    bioFields.classList.add('hidden');
+    arrow.classList.remove('open');
+  }
+
+  modal.classList.remove('hidden');
+  document.getElementById('weight-val').focus();
+}
+
+function closeWeightModal() {
+  document.getElementById('modal-add-weight').classList.add('hidden');
+}
+
+function toggleBioimpedanceFields() {
+  const fields = document.getElementById('bioimpedance-fields');
+  const arrow = document.getElementById('arrow-bioimpedance');
+  fields.classList.toggle('hidden');
+  arrow.classList.toggle('open');
+}
+
+async function handleSaveWeight(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit-weight-id').value;
+  const date = document.getElementById('weight-date').value;
+  const weightVal = parseFloat(document.getElementById('weight-val').value);
+
+  const getNumOrNull = (id) => {
+    const val = document.getElementById(id).value;
+    return val !== '' ? parseFloat(val) : null;
+  };
+
+  const payload = {
+    id: id || undefined,
+    date: date,
+    weight: weightVal,
+    body_fat: getNumOrNull('weight-body-fat'),
+    muscle: getNumOrNull('weight-muscle'),
+    visceral_fat: getNumOrNull('weight-visceral'),
+    water: getNumOrNull('weight-water'),
+    waist: getNumOrNull('weight-waist'),
+    hips: getNumOrNull('weight-hips'),
+    notes: document.getElementById('weight-notes').value.trim()
+  };
+
+  try {
+    const res = await fetch('/api/weight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      closeWeightModal();
+      await loadWeightData();
+    } else {
+      const err = await res.json();
+      alert(`Errore: ${err.detail || 'Impossibile salvare la misurazione'}`);
+    }
+  } catch (err) {
+    console.error("Errore salvataggio peso:", err);
+  }
+}
+
+/* ==========================================================================
+   PHYSICAL ACTIVITIES & TREADMILL TRACKING LOGIC
+   ========================================================================== */
+
+async function loadActivitiesData() {
+  try {
+    const res = await fetch('/api/activities');
+    activities = await res.json();
+    renderActivitiesKPIs();
+    renderActivitiesList();
+  } catch (err) {
+    console.error("Errore caricamento attività:", err);
+  }
+}
+
+function calculateEstimatedCalories(durationMinutes, speedKmh) {
+  const userWeight = (weights && weights.length > 0) ? weights[weights.length - 1].weight : 105.0;
+  const durationHours = (parseFloat(durationMinutes) || 0) / 60;
+  const speed = parseFloat(speedKmh) || 4.0;
+  const cals = durationHours * speed * userWeight * 0.75;
+  return Math.round(cals);
+}
+
+function updateModalCalories() {
+  const autoChecked = document.getElementById('act-auto-calories').checked;
+  const calInput = document.getElementById('act-calories');
+  const dur = document.getElementById('act-duration').value;
+  const spd = document.getElementById('act-speed').value;
+
+  if (autoChecked) {
+    const est = calculateEstimatedCalories(dur, spd);
+    calInput.value = est;
+    calInput.setAttribute('readonly', 'true');
+    calInput.style.backgroundColor = '#f1f5f9';
+  } else {
+    calInput.removeAttribute('readonly');
+    calInput.style.backgroundColor = '#ffffff';
+  }
+}
+
+function renderActivitiesKPIs() {
+  const kpiMinutes = document.getElementById('kpi-act-minutes');
+  const kpiCalories = document.getElementById('kpi-act-calories');
+  const kpiSessions = document.getElementById('kpi-act-sessions');
+  const kpiAvgSpeed = document.getElementById('kpi-act-avg-speed');
+  const kpiStatus = document.getElementById('kpi-act-status');
+  const progressFill = document.getElementById('act-progress-fill');
+  const progressText = document.getElementById('act-progress-text');
+  const countBadge = document.getElementById('activities-history-count');
+
+  if (countBadge) countBadge.textContent = `${activities.length} sessioni`;
+
+  const now = new Date();
+  const dayOfWeek = (now.getDay() + 6) % 7;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dayOfWeek);
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  const thisWeekActs = activities.filter(a => {
+    const d = new Date(a.date);
+    return d >= monday && d <= sunday;
+  });
+
+  const totalMin = thisWeekActs.reduce((sum, a) => sum + (parseFloat(a.duration_minutes) || 0), 0);
+  const totalCal = thisWeekActs.reduce((sum, a) => sum + (parseFloat(a.calories) || 0), 0);
+  const sessionCount = thisWeekActs.length;
+
+  let totalSpeedWeighted = 0;
+  thisWeekActs.forEach(a => {
+    totalSpeedWeighted += (parseFloat(a.speed_kmh) || 4.0) * (parseFloat(a.duration_minutes) || 0);
+  });
+  const avgSpeed = totalMin > 0 ? (totalSpeedWeighted / totalMin) : 0;
+
+  if (kpiMinutes) kpiMinutes.textContent = `${Math.round(totalMin)} min`;
+  if (kpiCalories) kpiCalories.textContent = `${Math.round(totalCal)} kcal`;
+  if (kpiSessions) kpiSessions.textContent = `${sessionCount} sessioni`;
+  if (kpiAvgSpeed) kpiAvgSpeed.textContent = sessionCount > 0 ? `Velocità media: ${avgSpeed.toFixed(1)} km/h` : "Velocità media: -- km/h";
+
+  const targetMin = 150;
+  const pct = Math.min(100, Math.round((totalMin / targetMin) * 100));
+  if (progressFill) progressFill.style.width = `${pct}%`;
+  if (progressText) progressText.textContent = `${Math.round(totalMin)} / ${targetMin} min (${pct}% target OMS)`;
+
+  if (kpiStatus) {
+    if (totalMin >= 150) {
+      kpiStatus.textContent = "Obiettivo Raggiunto! 🏆";
+      kpiStatus.className = "metric-value text-accent";
+    } else if (totalMin >= 90) {
+      kpiStatus.textContent = "Ottimo Ritmo! 💪";
+      kpiStatus.className = "metric-value text-accent";
+    } else if (totalMin >= 30) {
+      kpiStatus.textContent = "Buon Inizio 🔥";
+      kpiStatus.className = "metric-value text-accent";
+    } else {
+      kpiStatus.textContent = "Inizio Settimana ⚡";
+      kpiStatus.className = "metric-value";
+    }
+  }
+}
+
+function renderActivitiesList() {
+  const listContainer = document.getElementById('activities-history-list');
+  if (!listContainer) return;
+
+  if (!activities || activities.length === 0) {
+    listContainer.innerHTML = `<p style="color: #94a3b8; font-style: italic; padding: 24px; text-align: center; font-size: 12px;">Nessuna attività registrata. Clicca sui preset rapidi sopra o su '+ Nuova Attività'.</p>`;
+    return;
+  }
+
+  const typeIcons = {
+    walking_pad: "🚶",
+    outdoor_walking: "🌲",
+    cyclette: "🚴",
+    other: "⚡"
+  };
+
+  const typeNames = {
+    walking_pad: "Walking Pad (Tapis)",
+    outdoor_walking: "Camminata Aperto",
+    cyclette: "Cyclette",
+    other: "Attività"
+  };
+
+  listContainer.innerHTML = activities.map(act => {
+    const icon = typeIcons[act.activity_type] || "🚶";
+    const typeLabel = typeNames[act.activity_type] || act.activity_type;
+    const title = act.description || typeLabel;
+    const dt = new Date(act.date);
+    const dateFormatted = !isNaN(dt.getTime())
+      ? `${formatDateDisplay(act.date.split('T')[0])} ${act.date.includes('T') ? act.date.split('T')[1].substring(0, 5) : ''}`
+      : act.date;
+
+    return `
+      <div class="activity-card">
+        <div class="act-left">
+          <div class="act-icon">${icon}</div>
+          <div class="act-info">
+            <span class="act-title">${title}</span>
+            <div class="act-meta">
+              <span>📅 ${dateFormatted}</span>
+              <span>•</span>
+              <span class="badge badge-prep">${typeLabel}</span>
+              ${act.notes ? `<span>• <em>${act.notes}</em></span>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="act-right">
+          <div class="act-stat">
+            <div class="act-stat-val">⏱️ ${act.duration_minutes} min</div>
+            <div class="act-stat-sub">💨 ${act.speed_kmh ? act.speed_kmh + ' km/h' : '-'}</div>
+          </div>
+          <div class="act-stat">
+            <div class="act-stat-val" style="color: var(--accent);">🔥 ${Math.round(act.calories || 0)} kcal</div>
+            <div class="act-stat-sub">${act.auto_calories ? 'Auto' : 'Manuale'}</div>
+          </div>
+          <button class="btn btn-sm btn-outline text-danger btn-del-act" data-id="${act.id}" title="Elimina attività">🗑️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelectorAll('.btn-del-act').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.currentTarget.dataset.id;
+      if (confirm("Vuoi davvero eliminare questa attività?")) {
+        const res = await fetch(`/api/activities/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          await loadActivitiesData();
+        }
+      }
+    });
+  });
+}
+
+function openActivityModal(preset = null) {
+  const modal = document.getElementById('modal-add-activity');
+  document.getElementById('edit-activity-id').value = '';
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('act-datetime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+  document.getElementById('act-type').value = preset && preset.type ? preset.type : 'walking_pad';
+  document.getElementById('act-duration').value = preset && preset.duration ? preset.duration : 20;
+  document.getElementById('act-speed').value = preset && preset.speed ? preset.speed : 4.0;
+  document.getElementById('act-description').value = preset && preset.description ? preset.description : '';
+  document.getElementById('act-notes').value = '';
+  document.getElementById('act-auto-calories').checked = true;
+
+  updateModalCalories();
+  modal.classList.remove('hidden');
+}
+
+function closeActivityModal() {
+  document.getElementById('modal-add-activity').classList.add('hidden');
+}
+
+async function handleSaveActivity(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit-activity-id').value;
+  const datetime = document.getElementById('act-datetime').value;
+  const actType = document.getElementById('act-type').value;
+  const duration = parseFloat(document.getElementById('act-duration').value);
+  const speed = parseFloat(document.getElementById('act-speed').value) || 4.0;
+  const autoCals = document.getElementById('act-auto-calories').checked;
+  const calories = parseFloat(document.getElementById('act-calories').value) || 0;
+  const desc = document.getElementById('act-description').value.trim();
+  const notes = document.getElementById('act-notes').value.trim();
+
+  const payload = {
+    id: id || undefined,
+    date: datetime,
+    activity_type: actType,
+    description: desc,
+    duration_minutes: duration,
+    speed_kmh: speed,
+    calories: calories,
+    auto_calories: autoCals,
+    notes: notes
+  };
+
+  try {
+    const res = await fetch('/api/activities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      closeActivityModal();
+      await loadActivitiesData();
+    } else {
+      const err = await res.json();
+      alert(`Errore: ${err.detail || 'Impossibile salvare l\'attività'}`);
+    }
+  } catch (err) {
+    console.error("Errore salvataggio attività:", err);
+  }
+}
+
+function formatDateDisplay(isoDate) {
+  if (!isoDate) return '-';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return isoDate;
+}
+

@@ -33,6 +33,12 @@
       <button class="nav-tab" data-tab="mealprep">
         <span class="tab-icon">🍳</span> Meal Prep
       </button>
+      <button class="nav-tab" data-tab="weight">
+        <span class="tab-icon">⚖️</span> Peso
+      </button>
+      <button class="nav-tab" data-tab="activities">
+        <span class="tab-icon">🏃</span> Attività Fisica
+      </button>
     </nav>
   </header>
 
@@ -166,6 +172,190 @@
           <li><strong>Passato di Verdura Indistruttibile:</strong> Porzionato in barattoli da 500ml per 2 persone (zucchine, carote, zucca).</li>
           <li><strong>Carne del Macellaio sotto casa:</strong> Farsi incartare gli hamburger e le fettine singolarmente e congelarli subito. Si scongelano in 4 minuti al microonde.</li>
         </ul>
+      </div>
+    </section>
+
+    <!-- TAB 5: MONITORAGGIO PESO & BIOIMPEDENZA -->
+    <section id="tab-weight" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h2>Monitoraggio Peso & Composizione Corporea</h2>
+          <p class="section-desc">Traccia l'andamento del peso, la media mobile a 7 giorni (per filtrare la ritenzione idrica), i dati di bioimpedenza e le circonferenze.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="btn-open-weight-modal">
+            ➕ Registra Peso
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-icon">⚖️</span>
+            <span class="metric-label">Peso Attuale</span>
+          </div>
+          <div class="metric-value" id="kpi-current-weight">-- kg</div>
+          <div class="metric-sub" id="kpi-weight-delta">In attesa di misurazioni...</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-icon">📉</span>
+            <span class="metric-label">Media Mobile (7gg)</span>
+          </div>
+          <div class="metric-value" id="kpi-moving-avg">-- kg</div>
+          <div class="metric-sub text-muted">Filtra le oscillazioni d'acqua</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-icon">⚡</span>
+            <span class="metric-label">Tasso Dimagrimento</span>
+          </div>
+          <div class="metric-value" id="kpi-loss-rate">-- kg/sett.</div>
+          <div class="metric-sub text-success" id="kpi-loss-sub">Target sano: 0.5 - 1.0 kg/sett.</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-icon">📏</span>
+            <span class="metric-label">Girovita & Grasso</span>
+          </div>
+          <div class="metric-value" id="kpi-body-comp">-- cm</div>
+          <div class="metric-sub" id="kpi-body-comp-sub">Grasso corporeo & viscerale</div>
+        </div>
+      </div>
+
+      <!-- Chart Card -->
+      <div class="tracker-chart-card">
+        <div class="chart-header">
+          <div>
+            <h3>📈 Andamento del Peso e Media Mobile</h3>
+            <p class="chart-desc">I punti indicano le pesate giornaliere; la curva verde continua è la media mobile a 7 giorni.</p>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-dot dot-weight"></span> Peso Giornaliero</span>
+            <span class="legend-item"><span class="legend-line line-avg"></span> Media Mobile (7gg)</span>
+          </div>
+        </div>
+        <div class="chart-container" id="weight-chart-container">
+          <!-- Rendered dynamically via SVG -->
+        </div>
+      </div>
+
+      <!-- Measurements History Table -->
+      <div class="tracker-table-card">
+        <div class="table-header">
+          <h3>📋 Storico Misurazioni</h3>
+          <span class="badge badge-time" id="weight-history-count">0 registrazioni</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Peso (kg)</th>
+                <th>Variazione</th>
+                <th>Media Mobile</th>
+                <th>% Grasso</th>
+                <th>Muscolo</th>
+                <th>Grasso Visc.</th>
+                <th>Girovita</th>
+                <th>Note</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="weight-history-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: ATTIVITÀ FISICA & TAPIS ROULANT -->
+    <section id="tab-activities" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h2>Attività Fisica & Tapis Roulant</h2>
+          <p class="section-desc">Registra le tue camminate sul walking pad o all'aperto, calcola le calorie e monitora i minuti settimanali dedicati al movimento.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-primary" id="btn-open-activity-modal">
+            ➕ Nuova Attività
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Preset Buttons -->
+      <div class="quick-preset-bar">
+        <span class="preset-label">⚡ Registrazione Rapida Walking Pad:</span>
+        <div class="preset-buttons">
+          <button type="button" class="btn btn-outline btn-preset" data-min="15" data-speed="3.5" data-desc="Pad Post-Pranzo (sensibilità insulinica)">
+            🚶 15 min @ 3.5 km/h (Post-Pranzo)
+          </button>
+          <button type="button" class="btn btn-outline btn-preset" data-min="20" data-speed="4.0" data-desc="Pad Decompressione (fine giornata)">
+            🚶 20 min @ 4.0 km/h (Stacco Serale)
+          </button>
+          <button type="button" class="btn btn-outline btn-preset" data-min="30" data-speed="4.0" data-desc="Sessione Lunga Walking Pad">
+            🚶 30 min @ 4.0 km/h (Sessione Lunga)
+          </button>
+        </div>
+      </div>
+
+      <!-- Weekly Stats Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-icon">⏱️</span>
+            <span class="metric-label">Minuti Questa Settimana</span>
+          </div>
+          <div class="metric-value" id="kpi-act-minutes">0 min</div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="act-progress-fill" style="width: 0%;"></div>
+          </div>
+          <div class="metric-sub" id="act-progress-text">Obiettivo: 150 min/settimana</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-icon">🔥</span>
+            <span class="metric-label">Calorie Bruciate (Sett.)</span>
+          </div>
+          <div class="metric-value" id="kpi-act-calories">0 kcal</div>
+          <div class="metric-sub text-muted">Stima energetica cardio</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-icon">👟</span>
+            <span class="metric-label">Sessioni Completate</span>
+          </div>
+          <div class="metric-value" id="kpi-act-sessions">0 sessioni</div>
+          <div class="metric-sub" id="kpi-act-avg-speed">Velocità media: -- km/h</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-icon">🎯</span>
+            <span class="metric-label">Stato Metabolico</span>
+          </div>
+          <div class="metric-value text-accent" id="kpi-act-status">Inizio Settimana</div>
+          <div class="metric-sub">Attivazione recettori GLUT-4</div>
+        </div>
+      </div>
+
+      <!-- Activities History -->
+      <div class="tracker-table-card">
+        <div class="table-header">
+          <h3>🏃 Registro Attività Recenti</h3>
+          <span class="badge badge-prep" id="activities-history-count">0 sessioni</span>
+        </div>
+        <div id="activities-history-list" class="activities-list">
+          <!-- Rendered dynamically -->
+        </div>
       </div>
     </section>
 
@@ -327,6 +517,152 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" id="btn-cancel-recipe">Annulla</button>
           <button type="submit" class="btn btn-primary" id="btn-save-recipe">Salva Ricetta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT WEIGHT -->
+  <div id="modal-add-weight" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="weight-modal-title">⚖️ Registra Misurazione Peso</h3>
+        <button class="modal-close" id="btn-close-weight-modal">&times;</button>
+      </div>
+      <form id="form-weight" class="modal-body">
+        <input type="hidden" id="edit-weight-id">
+        
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="weight-date">Data Misurazione</label>
+            <input type="date" id="weight-date" class="form-input" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="weight-val">Peso Corporeo (kg) <span class="text-danger">*</span></label>
+            <input type="number" id="weight-val" class="form-input" step="0.1" min="30" max="300" placeholder="Es. 105.4" required>
+          </div>
+        </div>
+
+        <!-- Collapsible Bioimpedance & Body Measurements -->
+        <div class="collapsible-section">
+          <button type="button" class="btn-collapsible-toggle" id="btn-toggle-bioimpedance">
+            <span>🧬 Dati Bioimpedenza & Misure (Opzionali)</span>
+            <span class="toggle-arrow" id="arrow-bioimpedance">▼</span>
+          </button>
+          <div id="bioimpedance-fields" class="collapsible-content hidden">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="weight-body-fat">% Massa Grassa</label>
+                <input type="number" id="weight-body-fat" class="form-input" step="0.1" min="3" max="70" placeholder="Es. 36.2">
+              </div>
+              <div class="form-group flex-1">
+                <label for="weight-muscle">Massa Muscolare (kg)</label>
+                <input type="number" id="weight-muscle" class="form-input" step="0.1" min="10" max="150" placeholder="Es. 64.1">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="weight-visceral">Grasso Viscerale (livello)</label>
+                <input type="number" id="weight-visceral" class="form-input" step="0.5" min="1" max="50" placeholder="Es. 17.0">
+              </div>
+              <div class="form-group flex-1">
+                <label for="weight-water">% Idratazione / Acqua</label>
+                <input type="number" id="weight-water" class="form-input" step="0.1" min="20" max="80" placeholder="Es. 46.6">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="weight-waist">Girovita (cm)</label>
+                <input type="number" id="weight-waist" class="form-input" step="0.5" min="40" max="200" placeholder="Es. 115.0">
+              </div>
+              <div class="form-group flex-1">
+                <label for="weight-hips">Fianchi (cm)</label>
+                <input type="number" id="weight-hips" class="form-input" step="0.5" min="40" max="200" placeholder="Es. 120.0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
+          <label for="weight-notes">Note (es. orario, digiuno, condizioni)</label>
+          <input type="text" id="weight-notes" class="form-input" placeholder="Es. Mattina a digiuno dopo risveglio">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btn-cancel-weight">Annulla</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-weight">Salva Misurazione</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT ACTIVITY -->
+  <div id="modal-add-activity" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="activity-modal-title">🏃 Registra Attività Fisica</h3>
+        <button class="modal-close" id="btn-close-activity-modal">&times;</button>
+      </div>
+      <form id="form-activity" class="modal-body">
+        <input type="hidden" id="edit-activity-id">
+        
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="act-datetime">Data e Ora</label>
+            <input type="datetime-local" id="act-datetime" class="form-input" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="act-type">Tipo Attività</label>
+            <select id="act-type" class="form-input">
+              <option value="walking_pad">🚶 Walking Pad (Tapis Roulant)</option>
+              <option value="outdoor_walking">🌲 Camminata all'Aperto</option>
+              <option value="cyclette">🚴 Cyclette (Prossimamente)</option>
+              <option value="other">⚡ Altra Attività</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="act-duration">Durata (minuti) <span class="text-danger">*</span></label>
+            <input type="number" id="act-duration" class="form-input" min="1" max="600" value="20" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="act-speed">Velocità (km/h)</label>
+            <input type="number" id="act-speed" class="form-input" step="0.1" min="0.5" max="30" value="4.0">
+          </div>
+        </div>
+
+        <!-- Calorie estimation box -->
+        <div class="calorie-calc-box">
+          <div class="flex-between" style="align-items: center; margin-bottom: 6px;">
+            <label class="toggle-label" style="margin: 0; font-size: 12px; font-weight: 600;">
+              <input type="checkbox" id="act-auto-calories" checked>
+              <span>Calcolo automatico calorie</span>
+            </label>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label for="act-calories" style="margin: 0; font-weight: 600;">Calorie (kcal):</label>
+              <input type="number" id="act-calories" class="form-input" style="width: 90px; text-align: right; font-weight: 700;" min="0" max="5000">
+            </div>
+          </div>
+          <p class="calorie-calc-hint" id="act-calc-hint">
+            Formula metabolica: stima calcolata su peso (~105 kg) e velocità.
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label for="act-description">Descrizione / Obiettivo</label>
+          <input type="text" id="act-description" class="form-input" placeholder="Es. Pad post-pranzo per abbassare il picco glicemico">
+        </div>
+
+        <div class="form-group">
+          <label for="act-notes">Note Sensazioni (energia, battiti, ecc.)</label>
+          <input type="text" id="act-notes" class="form-input" placeholder="Es. Molto piacevole, nessuna fatica articolare">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btn-cancel-activity">Annulla</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-activity">Salva Attività</button>
         </div>
       </form>
     </div>

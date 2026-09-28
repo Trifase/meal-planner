@@ -1,0 +1,14 @@
+[
+  {
+    "id": "w_baseline",
+    "date": "2026-09-26",
+    "weight": 105.6,
+    "body_fat": 36.2,
+    "muscle": 64.1,
+    "visceral_fat": 17.0,
+    "water": 46.6,
+    "waist": null,
+    "hips": null,
+    "notes": "Misurazione di partenza"
+  }
+]

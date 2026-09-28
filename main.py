@@ -18,6 +18,8 @@ STATIC_DIR.mkdir(exist_ok=True)
 
 RECIPES_FILE = DATA_DIR / "recipes.json"
 PLAN_FILE = DATA_DIR / "plan.json"
+WEIGHT_FILE = DATA_DIR / "weight.json"
+ACTIVITIES_FILE = DATA_DIR / "activities.json"
 
 app = FastAPI(title="Metabolic Meal Planner - Anti-Insulino-Resistenza", version="1.0.0")
 
@@ -82,6 +84,31 @@ class SlotUpdate(BaseModel):
 class CopyWeekRequest(BaseModel):
     source_week: int = 1
     target_week: int = 2
+
+
+class WeightEntry(BaseModel):
+    id: Optional[str] = None
+    date: str  # YYYY-MM-DD
+    weight: float
+    body_fat: Optional[float] = None
+    muscle: Optional[float] = None
+    visceral_fat: Optional[float] = None
+    water: Optional[float] = None
+    waist: Optional[float] = None
+    hips: Optional[float] = None
+    notes: Optional[str] = ""
+
+
+class ActivityEntry(BaseModel):
+    id: Optional[str] = None
+    date: str  # YYYY-MM-DD or YYYY-MM-DDTHH:MM
+    activity_type: str = "walking_pad"  # walking_pad, outdoor_walking, cyclette
+    description: str = ""
+    duration_minutes: float
+    speed_kmh: Optional[float] = 4.0
+    calories: Optional[float] = 0.0
+    auto_calories: bool = True
+    notes: Optional[str] = ""
 
 
 # API Endpoints
@@ -309,6 +336,68 @@ def get_meal_prep():
         "week1_prep": list(prep_tasks_w1.values()),
         "week2_prep": list(prep_tasks_w2.values())
     }
+
+
+# WEIGHT TRACKING ENDPOINTS
+@app.get("/api/weight")
+def get_weights():
+    weights = load_json(WEIGHT_FILE, [])
+    weights.sort(key=lambda x: x.get("date", ""))
+    return weights
+
+
+@app.post("/api/weight")
+def add_weight(entry: WeightEntry):
+    weights = load_json(WEIGHT_FILE, [])
+    if not entry.id:
+        import time
+        entry.id = f"w_{int(time.time() * 1000)}"
+    entry_dict = entry.model_dump()
+    weights.append(entry_dict)
+    weights.sort(key=lambda x: x.get("date", ""))
+    save_json(WEIGHT_FILE, weights)
+    return entry_dict
+
+
+@app.delete("/api/weight/{entry_id}")
+def delete_weight(entry_id: str):
+    weights = load_json(WEIGHT_FILE, [])
+    new_weights = [w for w in weights if w.get("id") != entry_id]
+    if len(new_weights) == len(weights):
+        raise HTTPException(status_code=404, detail="Misurazione non trovata.")
+    save_json(WEIGHT_FILE, new_weights)
+    return {"status": "success", "deleted_id": entry_id}
+
+
+# ACTIVITIES TRACKING ENDPOINTS
+@app.get("/api/activities")
+def get_activities():
+    activities = load_json(ACTIVITIES_FILE, [])
+    activities.sort(key=lambda x: x.get("date", ""), reverse=True)
+    return activities
+
+
+@app.post("/api/activities")
+def add_activity(entry: ActivityEntry):
+    activities = load_json(ACTIVITIES_FILE, [])
+    if not entry.id:
+        import time
+        entry.id = f"act_{int(time.time() * 1000)}"
+    entry_dict = entry.model_dump()
+    activities.append(entry_dict)
+    activities.sort(key=lambda x: x.get("date", ""), reverse=True)
+    save_json(ACTIVITIES_FILE, activities)
+    return entry_dict
+
+
+@app.delete("/api/activities/{entry_id}")
+def delete_activity(entry_id: str):
+    activities = load_json(ACTIVITIES_FILE, [])
+    new_acts = [a for a in activities if a.get("id") != entry_id]
+    if len(new_acts) == len(activities):
+        raise HTTPException(status_code=404, detail="Attività non trovata.")
+    save_json(ACTIVITIES_FILE, new_acts)
+    return {"status": "success", "deleted_id": entry_id}
 
 
 # Static Files and Root

@@ -284,6 +284,9 @@
           <p class="section-desc">Registra le tue camminate sul walking pad o all'aperto, calcola le calorie e monitora i minuti settimanali dedicati al movimento.</p>
         </div>
         <div class="header-actions">
+          <button class="btn btn-outline" id="btn-open-import-modal">
+            📥 Importa (Strava / File)
+          </button>
           <button class="btn btn-primary" id="btn-open-activity-modal">
             ➕ Nuova Attività
           </button>
@@ -292,17 +295,12 @@
 
       <!-- Quick Preset Buttons -->
       <div class="quick-preset-bar">
-        <span class="preset-label">⚡ Registrazione Rapida Walking Pad:</span>
-        <div class="preset-buttons">
-          <button type="button" class="btn btn-outline btn-preset" data-min="15" data-speed="3.5" data-desc="Pad Post-Pranzo (sensibilità insulinica)">
-            🚶 15 min @ 3.5 km/h (Post-Pranzo)
-          </button>
-          <button type="button" class="btn btn-outline btn-preset" data-min="20" data-speed="4.0" data-desc="Pad Decompressione (fine giornata)">
-            🚶 20 min @ 4.0 km/h (Stacco Serale)
-          </button>
-          <button type="button" class="btn btn-outline btn-preset" data-min="30" data-speed="4.0" data-desc="Sessione Lunga Walking Pad">
-            🚶 30 min @ 4.0 km/h (Sessione Lunga)
-          </button>
+        <div class="preset-bar-header">
+          <span class="preset-label">⚡ Registrazioni Rapide:</span>
+          <button type="button" class="btn btn-sm btn-outline" id="btn-open-presets-modal">⚙️ Modifica Preset</button>
+        </div>
+        <div class="preset-buttons" id="quick-presets-container">
+          <!-- Rendered dynamically via JavaScript -->
         </div>
       </div>
 
@@ -407,8 +405,8 @@
 
         <!-- Meal Prep Section -->
         <div id="view-recipe-mealprep-box" class="view-recipe-section hidden">
-          <h4>🍳 Preparazione in anticipo (Meal Prep):</h4>
-          <p id="view-recipe-mealprep-text" class="view-prep-text"></p>
+          <h4>🍳 Preparazioni in anticipo (Meal Prep):</h4>
+          <div id="view-recipe-mealprep-list" class="view-prep-list"></div>
         </div>
 
         <!-- Notes Section -->
@@ -511,18 +509,13 @@
             <span><strong>Richiede Meal Prep Domenicale / Preparazione in anticipo</strong></span>
           </label>
           <div id="mealprep-details-fields" class="mealprep-subfields hidden">
-            <div class="form-group">
-              <label for="prep-batch-title">Titolo Batch / Preparazione</label>
-              <input type="text" id="prep-batch-title" class="form-input" placeholder="Es. Pentolone di Ragù Magro">
+            <div class="flex-between" style="align-items: center; margin-bottom: 8px;">
+              <span class="text-muted" style="font-size: 11.5px;">Definisci uno o più step/ingredienti da preparare in anticipo (es. lessatura cereali, uova sode, verdure).</span>
+              <button type="button" class="btn btn-sm btn-outline" id="btn-add-mealprep-step">➕ Aggiungi Step</button>
             </div>
-            <div class="form-group">
-              <label for="prep-instructions">Istruzioni Meal Prep</label>
-              <textarea id="prep-instructions" class="form-input" rows="2" placeholder="Come cucinare la base domenica e quante porzioni surgelare..."></textarea>
+            <div id="mealprep-steps-list" class="mealprep-steps-container">
+              <!-- Dynamic meal prep step cards -->
             </div>
-            <label class="checkbox-inline">
-              <input type="checkbox" id="prep-can-freeze" checked>
-              <span>Può essere congelato in freezer per le settimane successive</span>
-            </label>
           </div>
         </div>
 
@@ -681,6 +674,203 @@
           <button type="submit" class="btn btn-primary" id="btn-save-activity">Salva Attività</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT ACTIVITY PRESETS -->
+  <div id="modal-edit-presets" class="modal-overlay hidden">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <div>
+          <h3>⚙️ Personalizza Registrazioni Rapide</h3>
+          <p class="section-desc">Crea o modifica i pulsanti rapidi per registrare al volo le tue sessioni.</p>
+        </div>
+        <button class="modal-close" id="btn-close-presets-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="presets-editor-list" class="presets-editor-list">
+          <!-- Rendered dynamically -->
+        </div>
+        <div style="margin-top: 10px;">
+          <button type="button" class="btn btn-sm btn-outline" id="btn-add-preset-row">➕ Aggiungi Nuovo Preset</button>
+        </div>
+      </div>
+      <div class="modal-footer flex-between">
+        <button type="button" class="btn btn-outline text-danger" id="btn-reset-presets">Ripristina Predefiniti</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-outline" id="btn-cancel-presets">Annulla</button>
+          <button type="button" class="btn btn-primary" id="btn-save-presets">Salva Modifiche</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: IMPORT ACTIVITIES (STRAVA / TCX / GPX) -->
+  <div id="modal-import-activities" class="modal-overlay hidden">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <div>
+          <h3>📥 Importa Attività Esterne</h3>
+          <p class="section-desc">Sincronizza direttamente da Strava o carica file TCX / GPX esportati dal Mi Watch / Mi Fitness.</p>
+        </div>
+        <button class="modal-close" id="btn-close-import-modal">&times;</button>
+      </div>
+
+      <!-- Tab Switcher inside Import Modal -->
+      <div class="import-modal-tabs">
+        <button type="button" class="import-tab-btn active" id="btn-tab-strava">⚡ Strava Cloud Sync</button>
+        <button type="button" class="import-tab-btn" id="btn-tab-file">📁 File Diretto (.tcx / .gpx)</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- SUB-TAB 1: STRAVA -->
+        <div id="import-subtab-strava">
+          <!-- Config Box (Collapsible) -->
+          <div class="strava-config-card">
+            <div class="flex-between" style="align-items: center;">
+              <div>
+                <strong>🔑 Configurazione API Strava</strong>
+                <span id="strava-config-badge" class="badge badge-prep" style="margin-left: 6px;">Non verificato</span>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline" id="btn-toggle-strava-config">
+                Impostazioni Chiavi ▼
+              </button>
+            </div>
+            <div id="strava-config-form" class="hidden" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;">
+              <p class="section-desc" style="margin-bottom: 8px;">
+                Crea una Strava API App gratuita su <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener" style="color: var(--primary); text-decoration: underline;">strava.com/settings/api</a> e inserisci qui le credenziali:
+              </p>
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="strava-client-id">Client ID</label>
+                  <input type="text" id="strava-client-id" class="form-input" placeholder="Es. 123456">
+                </div>
+                <div class="form-group flex-1">
+                  <label for="strava-client-secret">Client Secret</label>
+                  <input type="password" id="strava-client-secret" class="form-input" placeholder="••••••••••••••••">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="strava-refresh-token">Refresh Token</label>
+                <input type="text" id="strava-refresh-token" class="form-input" placeholder="Refresh token con permessi activity:read_all">
+              </div>
+              <div style="text-align: right;">
+                <button type="button" class="btn btn-sm btn-primary" id="btn-save-strava-config">Salva Credenziali</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Strava Sync Toolbar -->
+          <div class="flex-between" style="align-items: center; margin: 12px 0 8px;">
+            <button type="button" class="btn btn-primary" id="btn-fetch-strava">
+              🔄 Recupera ultime attività da Strava
+            </button>
+            <span id="strava-fetch-status" class="text-muted" style="font-size: 11.5px;"></span>
+          </div>
+
+          <!-- Strava Activities Table -->
+          <div class="table-responsive" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 36px; text-align: center;"><input type="checkbox" id="strava-select-all"></th>
+                  <th>Data / Ora</th>
+                  <th>Titolo Strava</th>
+                  <th>Tipo Trifitness</th>
+                  <th>Durata</th>
+                  <th>Distanza</th>
+                  <th>Freq. Cardiaca</th>
+                  <th>Calorie</th>
+                  <th>Stato</th>
+                </tr>
+              </thead>
+              <tbody id="strava-activities-tbody">
+                <tr>
+                  <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                    Clicca su 'Recupera ultime attività da Strava' per visualizzare i tuoi allenamenti.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn btn-primary" id="btn-import-selected-strava" disabled>
+              📥 Importa Selezionate in Trifitness
+            </button>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 2: FILE DIRECT (TCX / GPX) -->
+        <div id="import-subtab-file" class="hidden">
+          <div class="file-dropzone" id="file-dropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-title">Trascina qui il file esportato da Mi Fitness o Strava</div>
+            <div class="dropzone-desc">Supporta file <strong>.TCX</strong> e <strong>.GPX</strong> con battiti cardiaci e dati GPS/passi</div>
+            <input type="file" id="fitness-file-input" accept=".tcx,.gpx,application/xml,text/xml" style="display: none;">
+            <button type="button" class="btn btn-outline" id="btn-browse-file" style="margin-top: 10px;">
+              Sfoglia File dal Computer
+            </button>
+          </div>
+
+          <div id="file-preview-card" class="file-preview-card hidden">
+            <h4>📋 Dati Estratti dal File:</h4>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="prev-file-date">Data / Ora</label>
+                <input type="datetime-local" id="prev-file-date" class="form-input">
+              </div>
+              <div class="form-group flex-1">
+                <label for="prev-file-type">Tipo Attività</label>
+                <select id="prev-file-type" class="form-input">
+                  <option value="walking_pad">🚶 Walking Pad (Tapis Roulant)</option>
+                  <option value="outdoor_walking">🌲 Camminata all'Aperto</option>
+                  <option value="cyclette">🚴 Cyclette</option>
+                  <option value="other">⚡ Altra Attività</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="prev-file-duration">Durata (min)</label>
+                <input type="number" id="prev-file-duration" class="form-input" step="0.1">
+              </div>
+              <div class="form-group flex-1">
+                <label for="prev-file-distance">Distanza (km)</label>
+                <input type="number" id="prev-file-distance" class="form-input" step="0.01">
+              </div>
+              <div class="form-group flex-1">
+                <label for="prev-file-speed">Velocità (km/h)</label>
+                <input type="number" id="prev-file-speed" class="form-input" step="0.1">
+              </div>
+              <div class="form-group flex-1">
+                <label for="prev-file-hr">Freq. Cardiaca Media</label>
+                <input type="number" id="prev-file-hr" class="form-input" step="1" placeholder="Es. 120 bpm">
+              </div>
+              <div class="form-group flex-1">
+                <label for="prev-file-calories">Calorie (kcal)</label>
+                <input type="number" id="prev-file-calories" class="form-input" step="1">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="prev-file-desc">Descrizione / Titolo</label>
+              <input type="text" id="prev-file-desc" class="form-input">
+            </div>
+
+            <div style="text-align: right; margin-top: 12px;">
+              <button type="button" class="btn btn-primary" id="btn-save-file-activity">
+                ✅ Salva questa Attività in Trifitness
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-close-import-bottom">Chiudi</button>
+      </div>
     </div>
   </div>
 

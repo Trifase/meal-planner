@@ -1,5 +1,6 @@
 # Personal Medical Data
 *.pdf
+data/strava_config.json
 
 # Python
 __pycache__/

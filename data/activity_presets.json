@@ -1,0 +1,38 @@
+[
+  {
+    "id": "preset_postpranzo",
+    "label": "🚶 15 min @ 3.5 km/h (Post-Pranzo)",
+    "type": "walking_pad",
+    "duration": 15,
+    "speed": 3.5,
+    "distance": 0.88,
+    "description": "Pad Post-Pranzo (sensibilità insulinica)"
+  },
+  {
+    "id": "preset_stacco",
+    "label": "🚶 20 min @ 4.0 km/h (Stacco Serale)",
+    "type": "walking_pad",
+    "duration": 20,
+    "speed": 4.0,
+    "distance": 1.33,
+    "description": "Pad Decompressione (fine giornata)"
+  },
+  {
+    "id": "preset_lunga",
+    "label": "🚶 30 min @ 4.0 km/h (Sessione Lunga)",
+    "type": "walking_pad",
+    "duration": 30,
+    "speed": 4.0,
+    "distance": 2.0,
+    "description": "Sessione Lunga Walking Pad"
+  },
+  {
+    "id": "preset_outdoor",
+    "label": "🌲 45 min @ 4.5 km/h (Camminata Aperto)",
+    "type": "outdoor_walking",
+    "duration": 45,
+    "speed": 4.5,
+    "distance": 3.38,
+    "description": "Camminata aerobica all'aperto"
+  }
+]

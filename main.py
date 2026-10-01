@@ -1,8 +1,15 @@
+import datetime
 import json
+import math
 import os
 import re
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -20,6 +27,8 @@ RECIPES_FILE = DATA_DIR / "recipes.json"
 PLAN_FILE = DATA_DIR / "plan.json"
 WEIGHT_FILE = DATA_DIR / "weight.json"
 ACTIVITIES_FILE = DATA_DIR / "activities.json"
+PRESETS_FILE = DATA_DIR / "activity_presets.json"
+STRAVA_CONFIG_FILE = DATA_DIR / "strava_config.json"
 
 app = FastAPI(title="Trifitness - Metabolic Health & Lifestyle", version="1.1.0")
 
@@ -70,7 +79,7 @@ class Recipe(BaseModel):
     servings: int = 2
     prep_time_minutes: int = 5
     ingredients: List[Ingredient]
-    meal_prep: Optional[MealPrepInfo] = None
+    meal_prep: Optional[Union[MealPrepInfo, List[MealPrepInfo]]] = None
     notes: Optional[str] = ""
 
 
@@ -102,7 +111,7 @@ class WeightEntry(BaseModel):
 class ActivityEntry(BaseModel):
     id: Optional[str] = None
     date: str  # YYYY-MM-DD or YYYY-MM-DDTHH:MM
-    activity_type: str = "walking_pad"  # walking_pad, outdoor_walking, cyclette
+    activity_type: str = "walking_pad"  # walking_pad, outdoor_walking, cyclette, other
     description: str = ""
     duration_minutes: float
     distance_km: Optional[float] = None
@@ -110,6 +119,35 @@ class ActivityEntry(BaseModel):
     calories: Optional[float] = 0.0
     auto_calories: bool = True
     notes: Optional[str] = ""
+    strava_id: Optional[int] = None
+    avg_hr: Optional[float] = None
+
+
+class ActivityPreset(BaseModel):
+    id: Optional[str] = None
+    label: str
+    type: str = "walking_pad"
+    duration: float
+    speed: Optional[float] = 4.0
+    distance: Optional[float] = None
+    description: str = ""
+
+
+class StravaConfig(BaseModel):
+    client_id: Optional[str] = ""
+    client_secret: Optional[str] = ""
+    refresh_token: Optional[str] = ""
+    access_token: Optional[str] = ""
+    expires_at: Optional[int] = 0
+
+
+class StravaImportRequest(BaseModel):
+    activities: List[ActivityEntry]
+
+
+class FileParseRequest(BaseModel):
+    filename: str
+    content: str
 
 
 # API Endpoints
@@ -320,8 +358,14 @@ def get_meal_prep():
                 r_id = slots.get(slot_key)
                 if r_id and r_id in recipes:
                     recipe = recipes[r_id]
-                    mp = recipe.get("meal_prep")
-                    if mp and mp.get("is_prep"):
+                    mp_data = recipe.get("meal_prep")
+                    mp_list = []
+                    if isinstance(mp_data, list):
+                        mp_list = [m for m in mp_data if isinstance(m, dict) and m.get("is_prep")]
+                    elif isinstance(mp_data, dict) and mp_data.get("is_prep"):
+                        mp_list = [mp_data]
+
+                    for mp in mp_list:
                         batch_title = mp.get("batch_title", recipe["title"])
                         if batch_title not in target_dict:
                             target_dict[batch_title] = {
@@ -331,7 +375,9 @@ def get_meal_prep():
                                 "can_freeze": mp.get("can_freeze", True),
                                 "needed_for": []
                             }
-                        target_dict[batch_title]["needed_for"].append(f"{day_name} ({slot_key.replace('_', ' ').capitalize()})")
+                        needed_label = f"{day_name} ({slot_key.replace('_', ' ').capitalize()})"
+                        if needed_label not in target_dict[batch_title]["needed_for"]:
+                            target_dict[batch_title]["needed_for"].append(needed_label)
 
     return {
         "week1_prep": list(prep_tasks_w1.values()),
@@ -351,10 +397,19 @@ def get_weights():
 def add_weight(entry: WeightEntry):
     weights = load_json(WEIGHT_FILE, [])
     if not entry.id:
-        import time
         entry.id = f"w_{int(time.time() * 1000)}"
-    entry_dict = entry.model_dump()
-    weights.append(entry_dict)
+        entry_dict = entry.model_dump()
+        weights.append(entry_dict)
+    else:
+        entry_dict = entry.model_dump()
+        found = False
+        for i, w in enumerate(weights):
+            if w.get("id") == entry.id:
+                weights[i] = entry_dict
+                found = True
+                break
+        if not found:
+            weights.append(entry_dict)
     weights.sort(key=lambda x: x.get("date", ""))
     save_json(WEIGHT_FILE, weights)
     return entry_dict
@@ -370,6 +425,66 @@ def delete_weight(entry_id: str):
     return {"status": "success", "deleted_id": entry_id}
 
 
+# ACTIVITY PRESETS
+DEFAULT_PRESETS = [
+    {
+        "id": "preset_postpranzo",
+        "label": "🚶 15 min @ 3.5 km/h (Post-Pranzo)",
+        "type": "walking_pad",
+        "duration": 15,
+        "speed": 3.5,
+        "distance": 0.88,
+        "description": "Pad Post-Pranzo (sensibilità insulinica)"
+    },
+    {
+        "id": "preset_stacco",
+        "label": "🚶 20 min @ 4.0 km/h (Stacco Serale)",
+        "type": "walking_pad",
+        "duration": 20,
+        "speed": 4.0,
+        "distance": 1.33,
+        "description": "Pad Decompressione (fine giornata)"
+    },
+    {
+        "id": "preset_lunga",
+        "label": "🚶 30 min @ 4.0 km/h (Sessione Lunga)",
+        "type": "walking_pad",
+        "duration": 30,
+        "speed": 4.0,
+        "distance": 2.0,
+        "description": "Sessione Lunga Walking Pad"
+    },
+    {
+        "id": "preset_outdoor",
+        "label": "🌲 45 min @ 4.5 km/h (Camminata Aperto)",
+        "type": "outdoor_walking",
+        "duration": 45,
+        "speed": 4.5,
+        "distance": 3.38,
+        "description": "Camminata aerobica all'aperto"
+    }
+]
+
+
+@app.get("/api/activity-presets")
+def get_activity_presets():
+    presets = load_json(PRESETS_FILE, None)
+    if presets is None:
+        presets = DEFAULT_PRESETS
+        save_json(PRESETS_FILE, presets)
+    return presets
+
+
+@app.post("/api/activity-presets")
+def save_activity_presets(presets: List[ActivityPreset]):
+    preset_dicts = [p.model_dump() for p in presets]
+    for i, p in enumerate(preset_dicts):
+        if not p.get("id"):
+            p["id"] = f"preset_{int(time.time() * 1000)}_{i}"
+    save_json(PRESETS_FILE, preset_dicts)
+    return preset_dicts
+
+
 # ACTIVITIES TRACKING ENDPOINTS
 @app.get("/api/activities")
 def get_activities():
@@ -381,11 +496,19 @@ def get_activities():
 @app.post("/api/activities")
 def add_activity(entry: ActivityEntry):
     activities = load_json(ACTIVITIES_FILE, [])
-    if not entry.id:
-        import time
-        entry.id = f"act_{int(time.time() * 1000)}"
     entry_dict = entry.model_dump()
-    activities.append(entry_dict)
+    if not entry.id:
+        entry_dict["id"] = f"act_{int(time.time() * 1000)}"
+        activities.append(entry_dict)
+    else:
+        found = False
+        for i, a in enumerate(activities):
+            if a.get("id") == entry.id:
+                activities[i] = entry_dict
+                found = True
+                break
+        if not found:
+            activities.append(entry_dict)
     activities.sort(key=lambda x: x.get("date", ""), reverse=True)
     save_json(ACTIVITIES_FILE, activities)
     return entry_dict
@@ -399,6 +522,336 @@ def delete_activity(entry_id: str):
         raise HTTPException(status_code=404, detail="Attività non trovata.")
     save_json(ACTIVITIES_FILE, new_acts)
     return {"status": "success", "deleted_id": entry_id}
+
+
+# STRAVA ENDPOINTS
+@app.get("/api/strava/config")
+def get_strava_config():
+    config = load_json(STRAVA_CONFIG_FILE, {})
+    return {
+        "client_id": config.get("client_id", ""),
+        "client_secret": config.get("client_secret", ""),
+        "refresh_token": config.get("refresh_token", ""),
+        "is_configured": bool(config.get("client_id") and config.get("client_secret") and config.get("refresh_token"))
+    }
+
+
+@app.post("/api/strava/config")
+def save_strava_config(cfg: StravaConfig):
+    config = load_json(STRAVA_CONFIG_FILE, {})
+    if cfg.client_id is not None:
+        config["client_id"] = cfg.client_id.strip()
+    if cfg.client_secret is not None:
+        config["client_secret"] = cfg.client_secret.strip()
+    if cfg.refresh_token is not None:
+        config["refresh_token"] = cfg.refresh_token.strip()
+    config["access_token"] = ""
+    config["expires_at"] = 0
+    save_json(STRAVA_CONFIG_FILE, config)
+    return {
+        "status": "success",
+        "is_configured": bool(config.get("client_id") and config.get("client_secret") and config.get("refresh_token"))
+    }
+
+
+def get_strava_access_token():
+    config = load_json(STRAVA_CONFIG_FILE, {})
+    client_id = config.get("client_id")
+    client_secret = config.get("client_secret")
+    refresh_token = config.get("refresh_token")
+
+    if not client_id or not client_secret or not refresh_token:
+        raise HTTPException(status_code=400, detail="Credenziali Strava non configurate. Clicca su Configura Strava.")
+
+    now = int(time.time())
+    access_token = config.get("access_token")
+    expires_at = config.get("expires_at", 0)
+
+    if access_token and expires_at > (now + 60):
+        return access_token
+
+    token_url = "https://www.strava.com/oauth/token"
+    post_data = urllib.parse.urlencode({
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token
+    }).encode("utf-8")
+
+    req = urllib.request.Request(token_url, data=post_data, headers={"User-Agent": "Trifitness/1.1"})
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            config["access_token"] = data["access_token"]
+            config["refresh_token"] = data.get("refresh_token", refresh_token)
+            config["expires_at"] = data.get("expires_at", 0)
+            save_json(STRAVA_CONFIG_FILE, config)
+            return config["access_token"]
+    except urllib.error.HTTPError as e:
+        error_msg = e.read().decode("utf-8", errors="ignore")
+        raise HTTPException(status_code=400, detail=f"Errore autenticazione Strava ({e.code}): {error_msg}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Errore connessione a Strava: {str(e)}")
+
+
+@app.get("/api/strava/activities")
+def get_strava_activities():
+    access_token = get_strava_access_token()
+    existing_activities = load_json(ACTIVITIES_FILE, [])
+    imported_strava_ids = {a.get("strava_id") for a in existing_activities if a.get("strava_id")}
+
+    api_url = "https://www.strava.com/api/v3/athlete/activities?per_page=30"
+    req = urllib.request.Request(api_url, headers={
+        "Authorization": f"Bearer {access_token}",
+        "User-Agent": "Trifitness/1.1"
+    })
+
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            raw_activities = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        error_msg = e.read().decode("utf-8", errors="ignore")
+        raise HTTPException(status_code=400, detail=f"Errore Strava API ({e.code}): {error_msg}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Errore connessione a Strava: {str(e)}")
+
+    parsed = []
+    for item in raw_activities:
+        strava_id = item.get("id")
+        sport_type = (item.get("sport_type") or item.get("type") or "Walk").lower()
+        name = item.get("name", "Attività Strava")
+        name_lower = name.lower()
+
+        if "ride" in sport_type or "cycle" in sport_type:
+            act_type = "cyclette"
+        elif "tapis" in name_lower or "pad" in name_lower or "virtualwalk" in sport_type or "treadmill" in name_lower:
+            act_type = "walking_pad"
+        elif "walk" in sport_type or "hike" in sport_type or "run" in sport_type:
+            act_type = "outdoor_walking"
+        else:
+            act_type = "other"
+
+        duration_sec = item.get("moving_time") or item.get("elapsed_time") or 0
+        duration_min = round(duration_sec / 60, 1)
+
+        dist_meters = item.get("distance", 0)
+        dist_km = round(dist_meters / 1000, 2)
+
+        speed_kmh = 0.0
+        if duration_min > 0 and dist_km > 0:
+            speed_kmh = round((dist_km / (duration_min / 60)), 1)
+        elif item.get("average_speed"):
+            speed_kmh = round(float(item["average_speed"]) * 3.6, 1)
+
+        calories = item.get("calories")
+        if calories is None and item.get("kilojoules"):
+            calories = round(float(item["kilojoules"]) * 0.239006, 1)
+
+        raw_date = item.get("start_date_local") or item.get("start_date") or ""
+        date_formatted = raw_date[:16] if len(raw_date) >= 16 else raw_date
+
+        avg_hr = item.get("average_heartrate")
+        if avg_hr:
+            avg_hr = round(float(avg_hr), 1)
+
+        parsed.append({
+            "strava_id": strava_id,
+            "date": date_formatted,
+            "activity_type": act_type,
+            "description": name,
+            "duration_minutes": duration_min,
+            "distance_km": dist_km,
+            "speed_kmh": speed_kmh,
+            "calories": round(calories, 1) if calories is not None else 0.0,
+            "auto_calories": calories is None or calories == 0,
+            "avg_hr": avg_hr,
+            "is_imported": strava_id in imported_strava_ids
+        })
+
+    return parsed
+
+
+@app.post("/api/strava/import")
+def import_strava_activities(req: StravaImportRequest):
+    activities = load_json(ACTIVITIES_FILE, [])
+    existing_strava_ids = {a.get("strava_id") for a in activities if a.get("strava_id")}
+
+    imported_count = 0
+    now_ms = int(time.time() * 1000)
+    for i, act in enumerate(req.activities):
+        if act.strava_id and act.strava_id in existing_strava_ids:
+            continue
+        act_dict = act.model_dump()
+        if not act_dict.get("id"):
+            act_dict["id"] = f"act_strava_{now_ms}_{i}"
+        activities.append(act_dict)
+        if act.strava_id:
+            existing_strava_ids.add(act.strava_id)
+        imported_count += 1
+
+    activities.sort(key=lambda x: x.get("date", ""), reverse=True)
+    save_json(ACTIVITIES_FILE, activities)
+    return {"status": "success", "imported_count": imported_count}
+
+
+# FITNESS FILE PARSER (TCX / GPX)
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r = 6371.0
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2)**2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return r * c
+
+
+def parse_fitness_file(filename: str, content: str) -> Dict[str, Any]:
+    try:
+        root = ET.fromstring(content.encode("utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"File XML non valido o corrotto: {str(e)}")
+
+    tag_clean = root.tag.split("}")[-1].lower() if "}" in root.tag else root.tag.lower()
+
+    if "trainingcenterdatabase" in tag_clean or filename.lower().endswith(".tcx"):
+        activity = root.find(".//{*}Activity")
+        if activity is None:
+            activity = root.find(".//Activity")
+        sport = (activity.attrib.get("Sport", "walking_pad") if activity is not None else "walking_pad").lower()
+
+        act_id = root.findtext(".//{*}Id")
+        if act_id is None:
+            act_id = root.findtext(".//Id")
+        date_str = act_id[:16] if act_id else datetime.datetime.now().strftime("%Y-%m-%dT%H:%M")
+
+        total_seconds = 0.0
+        total_distance_m = 0.0
+        total_calories = 0.0
+        hr_values = []
+
+        laps = root.findall(".//{*}Lap")
+        if not laps:
+            laps = root.findall(".//Lap")
+        for lap in laps:
+            t = lap.findtext("{*}TotalTimeSeconds") or lap.findtext("TotalTimeSeconds")
+            if t:
+                try:
+                    total_seconds += float(t)
+                except ValueError:
+                    pass
+            d = lap.findtext("{*}DistanceMeters") or lap.findtext("DistanceMeters")
+            if d:
+                try:
+                    total_distance_m += float(d)
+                except ValueError:
+                    pass
+            c = lap.findtext("{*}Calories") or lap.findtext("Calories")
+            if c:
+                try:
+                    total_calories += float(c)
+                except ValueError:
+                    pass
+
+            hr_el = lap.find(".//{*}AverageHeartRateBpm/{*}Value")
+            if hr_el is None:
+                hr_el = lap.find(".//AverageHeartRateBpm/Value")
+            if hr_el is not None and hr_el.text:
+                try:
+                    hr_values.append(float(hr_el.text))
+                except ValueError:
+                    pass
+
+        dur_min = round(total_seconds / 60, 1)
+        dist_km = round(total_distance_m / 1000, 2)
+        speed = round((dist_km / (dur_min / 60)), 1) if dur_min > 0 and dist_km > 0 else 4.0
+        avg_hr = round(sum(hr_values) / len(hr_values), 1) if hr_values else None
+
+        act_type = "walking_pad"
+        if "biking" in sport or "cycle" in sport:
+            act_type = "cyclette"
+        elif "run" in sport or "walk" in sport:
+            act_type = "outdoor_walking"
+
+        clean_title = filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ").capitalize()
+        return {
+            "date": date_str,
+            "activity_type": act_type,
+            "description": clean_title,
+            "duration_minutes": dur_min,
+            "distance_km": dist_km,
+            "speed_kmh": speed,
+            "calories": total_calories,
+            "avg_hr": avg_hr,
+            "auto_calories": total_calories == 0
+        }
+
+    elif "gpx" in tag_clean or filename.lower().endswith(".gpx"):
+        trk_name = root.findtext(".//{*}name") or root.findtext(".//name") or filename.rsplit(".", 1)[0]
+        pts = root.findall(".//{*}trkpt")
+        if not pts:
+            pts = root.findall(".//trkpt")
+
+        coords = []
+        times = []
+        hrs = []
+
+        for pt in pts:
+            lat = float(pt.attrib.get("lat", 0))
+            lon = float(pt.attrib.get("lon", 0))
+            coords.append((lat, lon))
+            t_str = pt.findtext("{*}time") or pt.findtext("time")
+            if t_str:
+                times.append(t_str)
+
+            hr_el = pt.find(".//{*}hr")
+            if hr_el is None:
+                hr_el = pt.find(".//hr")
+            if hr_el is not None and hr_el.text:
+                try:
+                    hrs.append(float(hr_el.text))
+                except ValueError:
+                    pass
+
+        tot_dist = 0.0
+        for i in range(len(coords) - 1):
+            tot_dist += haversine_km(coords[i][0], coords[i][1], coords[i+1][0], coords[i+1][1])
+
+        date_str = times[0][:16] if times else datetime.datetime.now().strftime("%Y-%m-%dT%H:%M")
+        dur_min = 0.0
+        if len(times) >= 2:
+            try:
+                t0 = datetime.datetime.fromisoformat(times[0].replace("Z", "+00:00"))
+                t1 = datetime.datetime.fromisoformat(times[-1].replace("Z", "+00:00"))
+                dur_min = round(abs((t1 - t0).total_seconds()) / 60, 1)
+            except Exception:
+                dur_min = 0.0
+
+        dist_km = round(tot_dist, 2)
+        speed = round((dist_km / (dur_min / 60)), 1) if dur_min > 0 and dist_km > 0 else 4.0
+        avg_hr = round(sum(hrs) / len(hrs), 1) if hrs else None
+
+        act_type = "walking_pad" if "tapis" in trk_name.lower() or "pad" in trk_name.lower() else "outdoor_walking"
+
+        return {
+            "date": date_str,
+            "activity_type": act_type,
+            "description": trk_name,
+            "duration_minutes": dur_min,
+            "distance_km": dist_km,
+            "speed_kmh": speed,
+            "calories": 0.0,
+            "avg_hr": avg_hr,
+            "auto_calories": True
+        }
+
+    else:
+        raise HTTPException(status_code=400, detail="Formato file non riconosciuto. Carica un file .tcx o .gpx valido.")
+
+
+@app.post("/api/activities/parse-file")
+def parse_activity_file(req: FileParseRequest):
+    return parse_fitness_file(req.filename, req.content)
 
 
 # Static Files and Root

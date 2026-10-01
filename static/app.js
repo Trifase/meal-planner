@@ -5,6 +5,10 @@ let shoppingList = {};
 let mealPrep = { week1_prep: [], week2_prep: [] };
 let weights = [];
 let activities = [];
+let activityPresets = [];
+let stravaConfig = { client_id: '', client_secret: '', refresh_token: '', is_configured: false };
+let stravaActivitiesList = [];
+let parsedFileActivity = null;
 let activeActivityPeriod = 'rolling7'; // Default: Ultimi 7 Giorni (include sessioni recenti senza azzerare il lunedì)
 let activeWeekView = 'w1'; // Default: Settimana 1
 let activeShoppingWeek = '1'; // Default: Settimana 1 (Spesa della Domenica)
@@ -41,16 +45,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Load all API data
 async function loadAllData() {
   try {
-    const [recRes, planRes, weightRes] = await Promise.all([
+    const [recRes, planRes, weightRes, presetRes] = await Promise.all([
       fetch('/api/recipes'),
       fetch('/api/plan'),
-      fetch('/api/weight')
+      fetch('/api/weight'),
+      fetch('/api/activity-presets')
     ]);
     recipes = await recRes.json();
     plan = await planRes.json();
     weights = await weightRes.json();
+    activityPresets = await presetRes.json();
     renderCalendar();
     renderRecipes();
+    renderActivityPresets();
   } catch (err) {
     console.error("Errore caricamento dati:", err);
   }
@@ -76,6 +83,7 @@ function setupNavigation() {
         await loadWeightData();
       } else if (target === 'activities') {
         await loadActivitiesData();
+        await loadActivityPresets();
       }
     });
   });
@@ -137,6 +145,7 @@ function setupEventListeners() {
   document.getElementById('btn-close-recipe-modal').addEventListener('click', closeRecipeModal);
   document.getElementById('btn-cancel-recipe').addEventListener('click', closeRecipeModal);
   document.getElementById('btn-add-ingredient-row').addEventListener('click', () => addIngredientRow());
+  document.getElementById('btn-add-mealprep-step').addEventListener('click', () => addMealPrepStepRow());
   document.getElementById('recipe-is-mealprep').addEventListener('change', (e) => {
     document.getElementById('mealprep-details-fields').classList.toggle('hidden', !e.target.checked);
   });
@@ -154,7 +163,7 @@ function setupEventListeners() {
   document.getElementById('btn-toggle-bioimpedance').addEventListener('click', toggleBioimpedanceFields);
   document.getElementById('form-weight').addEventListener('submit', handleSaveWeight);
 
-  // Activities Modal & Presets
+  // Activities Modal
   document.getElementById('btn-open-activity-modal').addEventListener('click', () => openActivityModal());
   document.getElementById('btn-close-activity-modal').addEventListener('click', closeActivityModal);
   document.getElementById('btn-cancel-activity').addEventListener('click', closeActivityModal);
@@ -167,16 +176,31 @@ function setupEventListeners() {
   document.getElementById('act-type').addEventListener('change', updateModalCalories);
   document.getElementById('form-activity').addEventListener('submit', handleSaveActivity);
 
-  // Quick Preset buttons for Walking Pad
-  document.querySelectorAll('.btn-preset').forEach(btn => {
-    btn.addEventListener('click', () => {
-      openActivityModal({
-        duration: btn.dataset.min,
-        speed: btn.dataset.speed,
-        description: btn.dataset.desc
-      });
-    });
+  // Presets Modal
+  document.getElementById('btn-open-presets-modal').addEventListener('click', openPresetsModal);
+  document.getElementById('btn-close-presets-modal').addEventListener('click', closePresetsModal);
+  document.getElementById('btn-cancel-presets').addEventListener('click', closePresetsModal);
+  document.getElementById('btn-add-preset-row').addEventListener('click', () => addPresetEditorRow());
+  document.getElementById('btn-reset-presets').addEventListener('click', resetPresetsToDefaults);
+  document.getElementById('btn-save-presets').addEventListener('click', savePresetsFromEditor);
+
+  // Import Modal
+  document.getElementById('btn-open-import-modal').addEventListener('click', openImportModal);
+  document.getElementById('btn-close-import-modal').addEventListener('click', closeImportModal);
+  document.getElementById('btn-close-import-bottom').addEventListener('click', closeImportModal);
+  document.getElementById('btn-tab-strava').addEventListener('click', () => switchImportTab('strava'));
+  document.getElementById('btn-tab-file').addEventListener('click', () => switchImportTab('file'));
+  document.getElementById('btn-toggle-strava-config').addEventListener('click', toggleStravaConfig);
+  document.getElementById('btn-save-strava-config').addEventListener('click', handleSaveStravaConfig);
+  document.getElementById('btn-fetch-strava').addEventListener('click', fetchStravaActivities);
+  document.getElementById('strava-select-all').addEventListener('change', toggleStravaSelectAll);
+  document.getElementById('btn-import-selected-strava').addEventListener('click', handleImportSelectedStrava);
+  document.getElementById('btn-browse-file').addEventListener('click', () => document.getElementById('fitness-file-input').click());
+  document.getElementById('fitness-file-input').addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length) handleFitnessFile(e.target.files[0]);
   });
+  document.getElementById('btn-save-file-activity').addEventListener('click', handleSaveFileActivity);
+  setupFileDropzone();
 
   // Activity Period Filter buttons
   document.querySelectorAll('#activity-period-filter button').forEach(btn => {
@@ -314,13 +338,20 @@ function openRecipeViewModal(recipe) {
 
   document.getElementById('view-recipe-title').textContent = recipe.title;
 
+  // Normalize meal prep list
+  const prepList = Array.isArray(recipe.meal_prep)
+    ? recipe.meal_prep.filter(m => m && m.is_prep)
+    : (recipe.meal_prep && recipe.meal_prep.is_prep ? [recipe.meal_prep] : []);
+
+  const hasFreeze = prepList.some(m => m.can_freeze);
+
   // Badges
   const badgesContainer = document.getElementById('view-recipe-badges');
   badgesContainer.innerHTML = `
     <span class="badge badge-time">⏱️ ${recipe.prep_time_minutes} min</span>
     <span class="badge badge-time">🍽️ ${recipe.category.toUpperCase()}</span>
-    ${recipe.meal_prep && recipe.meal_prep.is_prep ? `<span class="badge badge-prep">🍳 Meal Prep</span>` : ''}
-    ${recipe.meal_prep && recipe.meal_prep.can_freeze ? `<span class="badge badge-prep">🧊 Congelabile</span>` : ''}
+    ${prepList.length > 0 ? `<span class="badge badge-prep">🍳 Meal Prep (${prepList.length})</span>` : ''}
+    ${hasFreeze ? `<span class="badge badge-prep">🧊 Congelabile</span>` : ''}
   `;
 
   document.getElementById('view-recipe-base-info').textContent = `Base ricetta: ${recipe.servings || 2} porzioni`;
@@ -330,15 +361,23 @@ function openRecipeViewModal(recipe) {
 
   // Meal prep section
   const prepBox = document.getElementById('view-recipe-mealprep-box');
-  const prepText = document.getElementById('view-recipe-mealprep-text');
-  if (recipe.meal_prep && recipe.meal_prep.is_prep) {
+  const prepListContainer = document.getElementById('view-recipe-mealprep-list');
+  if (prepList.length > 0) {
     prepBox.classList.remove('hidden');
     prepBox.style.display = 'block';
-    prepText.innerHTML = `<strong>${recipe.meal_prep.batch_title || 'Preparazione'}:</strong> ${recipe.meal_prep.instructions}`;
+    prepListContainer.innerHTML = prepList.map(step => `
+      <div class="view-prep-step-card">
+        <div class="view-prep-step-title">
+          <span>🍳 <strong>${step.batch_title || 'Step Preparazione'}</strong></span>
+          <span class="badge badge-prep" style="font-size: 10px;">${step.can_freeze ? '🧊 Freezer OK' : '🥗 Frigo (3-4gg)'}</span>
+        </div>
+        <div class="view-prep-step-desc">${step.instructions || 'Nessuna istruzione inserita.'}</div>
+      </div>
+    `).join('');
   } else {
     prepBox.classList.add('hidden');
     prepBox.style.display = 'none';
-    prepText.innerHTML = '';
+    if (prepListContainer) prepListContainer.innerHTML = '';
   }
 
   // Notes section
@@ -359,7 +398,8 @@ function openRecipeViewModal(recipe) {
 
 function closeRecipeViewModal() {
   document.getElementById('modal-view-recipe').classList.add('hidden');
-  document.getElementById('view-recipe-mealprep-text').innerHTML = '';
+  const prepListContainer = document.getElementById('view-recipe-mealprep-list');
+  if (prepListContainer) prepListContainer.innerHTML = '';
   document.getElementById('view-recipe-notes-text').textContent = '';
   currentViewRecipe = null;
 }
@@ -715,7 +755,9 @@ function openRecipeModal(recipe = null) {
   const modal = document.getElementById('modal-edit-recipe');
   const titleEl = document.getElementById('recipe-modal-title');
   const ingredientsList = document.getElementById('ingredients-form-list');
+  const prepStepsList = document.getElementById('mealprep-steps-list');
   ingredientsList.innerHTML = '';
+  if (prepStepsList) prepStepsList.innerHTML = '';
 
   if (recipe) {
     titleEl.textContent = "Modifica Ricetta";
@@ -732,13 +774,18 @@ function openRecipeModal(recipe = null) {
     });
 
     // Meal prep
-    const isPrep = recipe.meal_prep && recipe.meal_prep.is_prep;
+    const prepList = Array.isArray(recipe.meal_prep)
+      ? recipe.meal_prep.filter(m => m && m.is_prep)
+      : (recipe.meal_prep && recipe.meal_prep.is_prep ? [recipe.meal_prep] : []);
+
+    const isPrep = prepList.length > 0;
     document.getElementById('recipe-is-mealprep').checked = isPrep;
     document.getElementById('mealprep-details-fields').classList.toggle('hidden', !isPrep);
+
     if (isPrep) {
-      document.getElementById('prep-batch-title').value = recipe.meal_prep.batch_title || '';
-      document.getElementById('prep-instructions').value = recipe.meal_prep.instructions || '';
-      document.getElementById('prep-can-freeze').checked = recipe.meal_prep.can_freeze !== false;
+      prepList.forEach(step => addMealPrepStepRow(step));
+    } else {
+      addMealPrepStepRow();
     }
 
     // Ingredients
@@ -758,8 +805,7 @@ function openRecipeModal(recipe = null) {
 
     document.getElementById('recipe-is-mealprep').checked = false;
     document.getElementById('mealprep-details-fields').classList.add('hidden');
-    document.getElementById('prep-batch-title').value = '';
-    document.getElementById('prep-instructions').value = '';
+    addMealPrepStepRow();
 
     // Add 2 empty ingredient rows
     addIngredientRow();
@@ -771,6 +817,47 @@ function openRecipeModal(recipe = null) {
 
 function closeRecipeModal() {
   document.getElementById('modal-edit-recipe').classList.add('hidden');
+}
+
+function addMealPrepStepRow(data = null) {
+  const container = document.getElementById('mealprep-steps-list');
+  if (!container) return;
+
+  const card = document.createElement('div');
+  card.className = 'mealprep-step-card';
+
+  const defaultTitle = data && data.batch_title ? data.batch_title : '';
+  const defaultInst = data && data.instructions ? data.instructions : '';
+  const defaultFreeze = data ? (data.can_freeze !== false) : true;
+
+  card.innerHTML = `
+    <button type="button" class="btn btn-sm btn-outline text-danger btn-remove-step" title="Rimuovi step">&times;</button>
+    <div class="form-group" style="margin-bottom: 6px; margin-right: 32px;">
+      <label style="font-size: 11px; font-weight: 600;">Titolo Step / Ingrediente da preparare</label>
+      <input type="text" class="form-input prep-step-title" placeholder="Es. Lessatura Riso Venere, Ragù Magro..." value="${defaultTitle}">
+    </div>
+    <div class="form-group" style="margin-bottom: 6px;">
+      <label style="font-size: 11px; font-weight: 600;">Istruzioni Preparazione Anticipata</label>
+      <textarea class="form-input prep-step-instructions" rows="2" placeholder="Come cucinare la base domenica, raffreddare o conservare...">${defaultInst}</textarea>
+    </div>
+    <label class="checkbox-inline" style="font-size: 11px;">
+      <input type="checkbox" class="prep-step-freeze" ${defaultFreeze ? 'checked' : ''}>
+      <span>Può essere congelato in freezer per le settimane successive</span>
+    </label>
+  `;
+
+  card.querySelector('.btn-remove-step').addEventListener('click', () => {
+    const totalSteps = container.querySelectorAll('.mealprep-step-card').length;
+    if (totalSteps > 1) {
+      card.remove();
+    } else {
+      card.querySelector('.prep-step-title').value = '';
+      card.querySelector('.prep-step-instructions').value = '';
+      card.querySelector('.prep-step-freeze').checked = true;
+    }
+  });
+
+  container.appendChild(card);
 }
 
 function addIngredientRow(data = null) {
@@ -842,17 +929,31 @@ async function handleSaveRecipe(e) {
     return;
   }
 
-  // Meal prep
+  // Meal prep (multiple steps)
   const isPrep = document.getElementById('recipe-is-mealprep').checked;
   let mealPrepInfo = null;
   if (isPrep) {
-    mealPrepInfo = {
-      is_prep: true,
-      prep_day: "Domenica",
-      batch_title: document.getElementById('prep-batch-title').value || title,
-      instructions: document.getElementById('prep-instructions').value || "",
-      can_freeze: document.getElementById('prep-can-freeze').checked
-    };
+    const stepCards = document.querySelectorAll('.mealprep-step-card');
+    const steps = [];
+    stepCards.forEach(c => {
+      const bTitle = c.querySelector('.prep-step-title').value.trim();
+      const bInst = c.querySelector('.prep-step-instructions').value.trim();
+      const bFreeze = c.querySelector('.prep-step-freeze').checked;
+      if (bTitle || bInst) {
+        steps.push({
+          is_prep: true,
+          prep_day: "Domenica",
+          batch_title: bTitle || title,
+          instructions: bInst,
+          can_freeze: bFreeze
+        });
+      }
+    });
+    if (steps.length === 1) {
+      mealPrepInfo = steps[0];
+    } else if (steps.length > 1) {
+      mealPrepInfo = steps;
+    }
   }
 
   const recipePayload = {
@@ -1223,12 +1324,21 @@ function renderWeightTable() {
         <td>${entry.visceral_fat ? entry.visceral_fat : '-'}</td>
         <td>${entry.waist ? entry.waist + ' cm' : '-'}</td>
         <td style="color: var(--text-muted); font-size: 11px; max-width: 180px; overflow: hidden; text-overflow: ellipsis;">${entry.notes || '-'}</td>
-        <td style="text-align: right;">
+        <td style="text-align: right; white-space: nowrap;">
+          <button class="btn btn-sm btn-outline btn-edit-weight" data-id="${entry.id}" title="Modifica misurazione">✏️</button>
           <button class="btn btn-sm btn-outline text-danger btn-del-weight" data-id="${entry.id}" title="Elimina misurazione">🗑️</button>
         </td>
       </tr>
     `;
   }).join('');
+
+  document.querySelectorAll('.btn-edit-weight').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.dataset.id;
+      const entry = weights.find(w => w.id === id);
+      if (entry) openWeightModal(entry);
+    });
+  });
 
   document.querySelectorAll('.btn-del-weight').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -1245,6 +1355,11 @@ function renderWeightTable() {
 
 function openWeightModal(entry = null) {
   const modal = document.getElementById('modal-add-weight');
+  const titleEl = document.getElementById('weight-modal-title');
+  if (titleEl) {
+    titleEl.textContent = entry ? "✏️ Modifica Misurazione Peso" : "⚖️ Registra Misurazione Peso";
+  }
+
   document.getElementById('edit-weight-id').value = entry ? entry.id : '';
   document.getElementById('weight-date').value = entry ? entry.date : new Date().toISOString().split('T')[0];
   document.getElementById('weight-val').value = entry ? entry.weight : '';
@@ -1528,6 +1643,8 @@ function renderActivitiesList() {
               <span>📅 ${dateFormatted}</span>
               <span>•</span>
               <span class="badge badge-prep">${typeLabel}</span>
+              ${act.avg_hr ? `<span class="badge badge-hr">❤️ ${Math.round(act.avg_hr)} bpm</span>` : ''}
+              ${act.strava_id ? `<span class="badge" style="background: #ffedd5; color: #ea580c; border: 1px solid #fed7aa; font-size: 10px;">Strava ⚡</span>` : ''}
               ${act.notes ? `<span>• <em>${act.notes}</em></span>` : ''}
             </div>
           </div>
@@ -1541,11 +1658,22 @@ function renderActivitiesList() {
             <div class="act-stat-val" style="color: var(--accent);">🔥 ${Math.round(act.calories || 0)} kcal</div>
             <div class="act-stat-sub">${act.auto_calories ? 'Auto' : 'Manuale'}</div>
           </div>
-          <button class="btn btn-sm btn-outline text-danger btn-del-act" data-id="${act.id}" title="Elimina attività">🗑️</button>
+          <div style="display: flex; gap: 4px;">
+            <button class="btn btn-sm btn-outline btn-edit-act" data-id="${act.id}" title="Modifica attività">✏️</button>
+            <button class="btn btn-sm btn-outline text-danger btn-del-act" data-id="${act.id}" title="Elimina attività">🗑️</button>
+          </div>
         </div>
       </div>
     `;
   }).join('');
+
+  document.querySelectorAll('.btn-edit-act').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.dataset.id;
+      const act = activities.find(a => a.id === id);
+      if (act) openActivityModal(act);
+    });
+  });
 
   document.querySelectorAll('.btn-del-act').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -1560,36 +1688,52 @@ function renderActivitiesList() {
   });
 }
 
-function openActivityModal(preset = null) {
+function openActivityModal(entryOrPreset = null) {
   const modal = document.getElementById('modal-add-activity');
-  document.getElementById('edit-activity-id').value = '';
+  const titleEl = document.getElementById('activity-modal-title');
 
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  document.getElementById('act-datetime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+  const isEdit = entryOrPreset && entryOrPreset.id && entryOrPreset.id.startsWith('act_');
+  if (titleEl) {
+    titleEl.textContent = isEdit ? "✏️ Modifica Attività Fisica" : "🏃 Registra Attività Fisica";
+  }
 
-  const dur = preset && preset.duration ? preset.duration : 20;
-  const spd = preset && preset.speed ? preset.speed : 4.0;
-  document.getElementById('act-type').value = preset && preset.type ? preset.type : 'walking_pad';
+  document.getElementById('edit-activity-id').value = isEdit ? entryOrPreset.id : '';
+
+  if (entryOrPreset && entryOrPreset.date) {
+    document.getElementById('act-datetime').value = entryOrPreset.date.length === 16 ? entryOrPreset.date : entryOrPreset.date.substring(0, 16);
+  } else {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('act-datetime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  const dur = entryOrPreset && (entryOrPreset.duration_minutes || entryOrPreset.duration) ? (entryOrPreset.duration_minutes || entryOrPreset.duration) : 20;
+  const spd = entryOrPreset && (entryOrPreset.speed_kmh || entryOrPreset.speed) ? (entryOrPreset.speed_kmh || entryOrPreset.speed) : 4.0;
+  document.getElementById('act-type').value = entryOrPreset && (entryOrPreset.activity_type || entryOrPreset.type) ? (entryOrPreset.activity_type || entryOrPreset.type) : 'walking_pad';
   document.getElementById('act-duration').value = dur;
   document.getElementById('act-speed').value = spd;
 
   const distInput = document.getElementById('act-distance');
-  if (preset && preset.distance) {
-    distInput.value = preset.distance;
+  if (entryOrPreset && (entryOrPreset.distance_km != null || entryOrPreset.distance != null)) {
+    distInput.value = entryOrPreset.distance_km != null ? entryOrPreset.distance_km : entryOrPreset.distance;
     distInput.dataset.auto = 'false';
   } else {
     distInput.value = ((dur / 60) * spd).toFixed(2);
     distInput.dataset.auto = 'true';
   }
 
-  document.getElementById('act-description').value = preset && preset.description ? preset.description : '';
-  document.getElementById('act-notes').value = '';
-  document.getElementById('act-auto-calories').checked = true;
+  document.getElementById('act-description').value = entryOrPreset && entryOrPreset.description ? entryOrPreset.description : '';
+  document.getElementById('act-notes').value = entryOrPreset && entryOrPreset.notes ? entryOrPreset.notes : '';
+
+  const autoCal = entryOrPreset && entryOrPreset.auto_calories !== undefined ? entryOrPreset.auto_calories : true;
+  document.getElementById('act-auto-calories').checked = autoCal;
+  if (!autoCal && entryOrPreset && entryOrPreset.calories) {
+    document.getElementById('act-calories').value = Math.round(entryOrPreset.calories);
+  }
 
   updateModalCalories();
   modal.classList.remove('hidden');
@@ -1640,6 +1784,567 @@ async function handleSaveActivity(e) {
     }
   } catch (err) {
     console.error("Errore salvataggio attività:", err);
+  }
+}
+
+// ACTIVITY PRESETS LOGIC
+async function loadActivityPresets() {
+  try {
+    const res = await fetch('/api/activity-presets');
+    activityPresets = await res.json();
+    renderActivityPresets();
+  } catch (err) {
+    console.error("Errore caricamento preset attività:", err);
+  }
+}
+
+function renderActivityPresets() {
+  const container = document.getElementById('quick-presets-container');
+  if (!container) return;
+
+  if (!activityPresets || activityPresets.length === 0) {
+    container.innerHTML = `<span class="text-muted" style="font-size: 11.5px; font-style: italic;">Nessun preset configurato. Clicca su 'Modifica Preset'.</span>`;
+    return;
+  }
+
+  container.innerHTML = activityPresets.map(p => `
+    <button type="button" class="btn btn-outline btn-preset" data-id="${p.id}" title="${p.description || p.label}">
+      ${p.label}
+    </button>
+  `).join('');
+
+  container.querySelectorAll('.btn-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const preset = activityPresets.find(p => p.id === id);
+      if (preset) {
+        openActivityModal(preset);
+      }
+    });
+  });
+}
+
+function openPresetsModal() {
+  const modal = document.getElementById('modal-edit-presets');
+  renderPresetEditorRows();
+  modal.classList.remove('hidden');
+}
+
+function closePresetsModal() {
+  document.getElementById('modal-edit-presets').classList.add('hidden');
+}
+
+function renderPresetEditorRows() {
+  const list = document.getElementById('presets-editor-list');
+  if (!list) return;
+  list.innerHTML = '';
+  activityPresets.forEach((p, idx) => addPresetEditorRow(p, idx));
+}
+
+function addPresetEditorRow(preset = null, idx = 0) {
+  const list = document.getElementById('presets-editor-list');
+  const row = document.createElement('div');
+  row.className = 'preset-editor-row';
+
+  const label = preset ? preset.label : '⚡ Nuovo Preset';
+  const type = preset ? preset.type : 'walking_pad';
+  const duration = preset ? preset.duration : 20;
+  const speed = preset ? preset.speed : 4.0;
+  const distance = preset && preset.distance ? preset.distance : '';
+  const description = preset ? preset.description : '';
+  const id = preset ? preset.id : `preset_custom_${Date.now()}_${idx}`;
+
+  row.dataset.id = id;
+  row.innerHTML = `
+    <div style="flex: 2; min-width: 170px;">
+      <label style="font-size: 10.5px; font-weight: 600; display: block; margin-bottom: 2px;">Etichetta Pulsante</label>
+      <input type="text" class="form-input p-label" value="${label}" required placeholder="Es. 🚶 20m @ 4.0 km/h">
+    </div>
+    <div style="flex: 1.5; min-width: 130px;">
+      <label style="font-size: 10.5px; font-weight: 600; display: block; margin-bottom: 2px;">Tipo Attività</label>
+      <select class="form-input p-type">
+        <option value="walking_pad" ${type === 'walking_pad' ? 'selected' : ''}>🚶 Walking Pad</option>
+        <option value="outdoor_walking" ${type === 'outdoor_walking' ? 'selected' : ''}>🌲 All'Aperto</option>
+        <option value="cyclette" ${type === 'cyclette' ? 'selected' : ''}>🚴 Cyclette</option>
+        <option value="other" ${type === 'other' ? 'selected' : ''}>⚡ Altro</option>
+      </select>
+    </div>
+    <div style="width: 75px;">
+      <label style="font-size: 10.5px; font-weight: 600; display: block; margin-bottom: 2px;">Minuti</label>
+      <input type="number" class="form-input p-duration" value="${duration}" min="1" max="300" required>
+    </div>
+    <div style="width: 75px;">
+      <label style="font-size: 10.5px; font-weight: 600; display: block; margin-bottom: 2px;">km/h</label>
+      <input type="number" class="form-input p-speed" value="${speed}" step="0.1" min="0.5" max="30">
+    </div>
+    <div style="width: 80px;">
+      <label style="font-size: 10.5px; font-weight: 600; display: block; margin-bottom: 2px;">Distanza</label>
+      <input type="number" class="form-input p-distance" value="${distance}" step="0.01" placeholder="Auto">
+    </div>
+    <div style="flex: 2; min-width: 150px;">
+      <label style="font-size: 10.5px; font-weight: 600; display: block; margin-bottom: 2px;">Descrizione / Obiettivo</label>
+      <input type="text" class="form-input p-desc" value="${description}" placeholder="Es. Pad post-pranzo">
+    </div>
+    <div style="align-self: flex-end; padding-bottom: 2px;">
+      <button type="button" class="btn btn-sm btn-outline text-danger btn-remove-preset" title="Elimina preset">&times;</button>
+    </div>
+  `;
+
+  row.querySelector('.btn-remove-preset').addEventListener('click', () => row.remove());
+  list.appendChild(row);
+}
+
+async function savePresetsFromEditor() {
+  const rows = document.querySelectorAll('.preset-editor-row');
+  const newPresets = [];
+  rows.forEach((r, i) => {
+    const label = r.querySelector('.p-label').value.trim();
+    const type = r.querySelector('.p-type').value;
+    const duration = parseFloat(r.querySelector('.p-duration').value) || 20;
+    const speed = parseFloat(r.querySelector('.p-speed').value) || 4.0;
+    const distVal = r.querySelector('.p-distance').value !== '' ? parseFloat(r.querySelector('.p-distance').value) : null;
+    const description = r.querySelector('.p-desc').value.trim();
+    const id = r.dataset.id || `preset_${Date.now()}_${i}`;
+
+    if (label) {
+      newPresets.push({
+        id,
+        label,
+        type,
+        duration,
+        speed,
+        distance: distVal,
+        description
+      });
+    }
+  });
+
+  if (newPresets.length === 0) {
+    alert("Inserisci almeno un preset!");
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/activity-presets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPresets)
+    });
+    if (res.ok) {
+      activityPresets = await res.json();
+      renderActivityPresets();
+      closePresetsModal();
+    } else {
+      alert("Errore salvataggio preset.");
+    }
+  } catch (err) {
+    console.error("Errore salvataggio preset:", err);
+    alert("Errore di rete.");
+  }
+}
+
+async function resetPresetsToDefaults() {
+  if (confirm("Vuoi ripristinare i preset predefiniti consigliati?")) {
+    const defaultList = [
+      {
+        id: "preset_postpranzo",
+        label: "🚶 15 min @ 3.5 km/h (Post-Pranzo)",
+        type: "walking_pad",
+        duration: 15,
+        speed: 3.5,
+        distance: 0.88,
+        description: "Pad Post-Pranzo (sensibilità insulinica)"
+      },
+      {
+        id: "preset_stacco",
+        label: "🚶 20 min @ 4.0 km/h (Stacco Serale)",
+        type: "walking_pad",
+        duration: 20,
+        speed: 4.0,
+        distance: 1.33,
+        description: "Pad Decompressione (fine giornata)"
+      },
+      {
+        id: "preset_lunga",
+        label: "🚶 30 min @ 4.0 km/h (Sessione Lunga)",
+        type: "walking_pad",
+        duration: 30,
+        speed: 4.0,
+        distance: 2.0,
+        description: "Sessione Lunga Walking Pad"
+      },
+      {
+        id: "preset_outdoor",
+        label: "🌲 45 min @ 4.5 km/h (Camminata Aperto)",
+        type: "outdoor_walking",
+        duration: 45,
+        speed: 4.5,
+        distance: 3.38,
+        description: "Camminata aerobica all'aperto"
+      }
+    ];
+
+    try {
+      const res = await fetch('/api/activity-presets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(defaultList)
+      });
+      if (res.ok) {
+        activityPresets = await res.json();
+        renderPresetEditorRows();
+        renderActivityPresets();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
+
+// STRAVA & FILE IMPORT LOGIC
+function openImportModal() {
+  const modal = document.getElementById('modal-import-activities');
+  switchImportTab('strava');
+  loadStravaConfig();
+  modal.classList.remove('hidden');
+}
+
+function closeImportModal() {
+  document.getElementById('modal-import-activities').classList.add('hidden');
+}
+
+function switchImportTab(tab) {
+  const btnStrava = document.getElementById('btn-tab-strava');
+  const btnFile = document.getElementById('btn-tab-file');
+  const tabStrava = document.getElementById('import-subtab-strava');
+  const tabFile = document.getElementById('import-subtab-file');
+
+  if (tab === 'strava') {
+    btnStrava.classList.add('active');
+    btnFile.classList.remove('active');
+    tabStrava.classList.remove('hidden');
+    tabFile.classList.add('hidden');
+  } else {
+    btnFile.classList.add('active');
+    btnStrava.classList.remove('active');
+    tabFile.classList.remove('hidden');
+    tabStrava.classList.add('hidden');
+  }
+}
+
+async function loadStravaConfig() {
+  try {
+    const res = await fetch('/api/strava/config');
+    stravaConfig = await res.json();
+    const badge = document.getElementById('strava-config-badge');
+    const form = document.getElementById('strava-config-form');
+
+    if (stravaConfig.is_configured) {
+      badge.textContent = "✅ Configurato";
+      badge.className = "badge badge-prep";
+      badge.style.background = "#ecfdf5";
+      badge.style.color = "#047857";
+      form.classList.add('hidden');
+    } else {
+      badge.textContent = "⚠️ Non configurato";
+      badge.className = "badge badge-prep";
+      badge.style.background = "#fffbeb";
+      badge.style.color = "#b45309";
+      form.classList.remove('hidden');
+    }
+
+    document.getElementById('strava-client-id').value = stravaConfig.client_id || '';
+    document.getElementById('strava-client-secret').value = stravaConfig.client_secret || '';
+    document.getElementById('strava-refresh-token').value = stravaConfig.refresh_token || '';
+  } catch (err) {
+    console.error("Errore caricamento config Strava:", err);
+  }
+}
+
+function toggleStravaConfig() {
+  const form = document.getElementById('strava-config-form');
+  form.classList.toggle('hidden');
+}
+
+async function handleSaveStravaConfig() {
+  const clientId = document.getElementById('strava-client-id').value.trim();
+  const clientSecret = document.getElementById('strava-client-secret').value.trim();
+  const refreshToken = document.getElementById('strava-refresh-token').value.trim();
+
+  try {
+    const res = await fetch('/api/strava/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken
+      })
+    });
+    if (res.ok) {
+      alert("Credenziali Strava salvate!");
+      await loadStravaConfig();
+    } else {
+      alert("Errore salvataggio credenziali Strava");
+    }
+  } catch (err) {
+    console.error("Errore salvataggio config Strava:", err);
+  }
+}
+
+async function fetchStravaActivities() {
+  const statusEl = document.getElementById('strava-fetch-status');
+  const tbody = document.getElementById('strava-activities-tbody');
+  const importBtn = document.getElementById('btn-import-selected-strava');
+
+  statusEl.textContent = "⏳ Connessione a Strava in corso...";
+  statusEl.style.color = "var(--primary)";
+
+  try {
+    const res = await fetch('/api/strava/activities');
+    if (!res.ok) {
+      const err = await res.json();
+      statusEl.textContent = `❌ ${err.detail || 'Errore recupero attività'}`;
+      statusEl.style.color = "var(--danger)";
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 24px;">${err.detail || 'Errore connessione a Strava. Verifica le credenziali.'}</td></tr>`;
+      return;
+    }
+
+    stravaActivitiesList = await res.json();
+    statusEl.textContent = `✅ Trovate ${stravaActivitiesList.length} attività recenti`;
+    statusEl.style.color = "var(--accent)";
+
+    if (stravaActivitiesList.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Nessuna attività trovata su Strava.</td></tr>`;
+      importBtn.disabled = true;
+      return;
+    }
+
+    tbody.innerHTML = stravaActivitiesList.map((act, idx) => {
+      const dtParts = act.date.split('T');
+      const dateDisp = `${formatDateDisplay(dtParts[0])} ${dtParts[1] ? dtParts[1].substring(0, 5) : ''}`;
+      const isImported = act.is_imported;
+
+      return `
+        <tr style="${isImported ? 'opacity: 0.6; background: #f8fafc;' : ''}">
+          <td style="text-align: center;">
+            <input type="checkbox" class="strava-row-chk" data-idx="${idx}" ${isImported ? 'disabled' : 'checked'}>
+          </td>
+          <td><strong>${dateDisp}</strong></td>
+          <td style="font-weight: 500;">${act.description}</td>
+          <td>
+            <select class="form-input strava-type-sel" data-idx="${idx}" style="font-size: 11px; padding: 2px 4px; height: 26px;" ${isImported ? 'disabled' : ''}>
+              <option value="walking_pad" ${act.activity_type === 'walking_pad' ? 'selected' : ''}>🚶 Tapis</option>
+              <option value="outdoor_walking" ${act.activity_type === 'outdoor_walking' ? 'selected' : ''}>🌲 Aperto</option>
+              <option value="cyclette" ${act.activity_type === 'cyclette' ? 'selected' : ''}>🚴 Cyclette</option>
+              <option value="other" ${act.activity_type === 'other' ? 'selected' : ''}>⚡ Altro</option>
+            </select>
+          </td>
+          <td>${act.duration_minutes} min</td>
+          <td>${act.distance_km ? act.distance_km.toFixed(2) + ' km' : '-'}</td>
+          <td>${act.avg_hr ? `<span class="badge badge-hr">❤️ ${Math.round(act.avg_hr)} bpm</span>` : '-'}</td>
+          <td>${act.calories ? Math.round(act.calories) + ' kcal' : '-'}</td>
+          <td>
+            ${isImported ? `<span class="badge badge-prep" style="background: #e2e8f0; color: #475569;">✅ Già presente</span>` : `<span class="badge badge-prep" style="background: #ecfdf5; color: #047857;">Pronta</span>`}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    updateStravaImportBtn();
+
+    document.querySelectorAll('.strava-row-chk').forEach(chk => {
+      chk.addEventListener('change', updateStravaImportBtn);
+    });
+
+    document.querySelectorAll('.strava-type-sel').forEach(sel => {
+      sel.addEventListener('change', (e) => {
+        const idx = parseInt(e.target.dataset.idx);
+        if (stravaActivitiesList[idx]) {
+          stravaActivitiesList[idx].activity_type = e.target.value;
+        }
+      });
+    });
+
+  } catch (err) {
+    console.error("Errore fetch Strava:", err);
+    statusEl.textContent = "❌ Errore durante la richiesta a Strava";
+    statusEl.style.color = "var(--danger)";
+  }
+}
+
+function toggleStravaSelectAll(e) {
+  const checked = e.target.checked;
+  document.querySelectorAll('.strava-row-chk:not(:disabled)').forEach(chk => {
+    chk.checked = checked;
+  });
+  updateStravaImportBtn();
+}
+
+function updateStravaImportBtn() {
+  const selected = document.querySelectorAll('.strava-row-chk:checked');
+  const btn = document.getElementById('btn-import-selected-strava');
+  if (selected.length > 0) {
+    btn.disabled = false;
+    btn.textContent = `📥 Importa Selezionate (${selected.length}) in Trifitness`;
+  } else {
+    btn.disabled = true;
+    btn.textContent = `📥 Importa Selezionate in Trifitness`;
+  }
+}
+
+async function handleImportSelectedStrava() {
+  const selectedChks = document.querySelectorAll('.strava-row-chk:checked');
+  if (selectedChks.length === 0) return;
+
+  const toImport = [];
+  selectedChks.forEach(chk => {
+    const idx = parseInt(chk.dataset.idx);
+    if (stravaActivitiesList[idx]) {
+      const act = stravaActivitiesList[idx];
+      toImport.push({
+        date: act.date,
+        activity_type: act.activity_type,
+        description: act.description,
+        duration_minutes: act.duration_minutes,
+        distance_km: act.distance_km,
+        speed_kmh: act.speed_kmh,
+        calories: act.calories,
+        auto_calories: act.auto_calories,
+        strava_id: act.strava_id,
+        avg_hr: act.avg_hr,
+        notes: "Importata da Strava"
+      });
+    }
+  });
+
+  try {
+    const res = await fetch('/api/strava/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activities: toImport })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      alert(`Importate con successo ${data.imported_count} attività!`);
+      closeImportModal();
+      await loadActivitiesData();
+    } else {
+      alert("Errore durante l'importazione delle attività");
+    }
+  } catch (err) {
+    console.error("Errore importazione Strava:", err);
+    alert("Errore di rete");
+  }
+}
+
+function setupFileDropzone() {
+  const dropzone = document.getElementById('file-dropzone');
+  if (!dropzone) return;
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+    });
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      handleFitnessFile(e.dataTransfer.files[0]);
+    }
+  });
+}
+
+function handleFitnessFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const content = e.target.result;
+    try {
+      const res = await fetch('/api/activities/parse-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, content: content })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`Errore lettura file: ${err.detail || 'Formato non valido'}`);
+        return;
+      }
+      parsedFileActivity = await res.json();
+      showFilePreview(parsedFileActivity);
+    } catch (err) {
+      console.error("Errore parse file:", err);
+      alert("Errore durante l'invio del file al server");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showFilePreview(act) {
+  const card = document.getElementById('file-preview-card');
+  card.classList.remove('hidden');
+
+  document.getElementById('prev-file-date').value = act.date || '';
+  document.getElementById('prev-file-type').value = act.activity_type || 'outdoor_walking';
+  document.getElementById('prev-file-duration').value = act.duration_minutes || '';
+  document.getElementById('prev-file-distance').value = act.distance_km || '';
+  document.getElementById('prev-file-speed').value = act.speed_kmh || '';
+  document.getElementById('prev-file-hr').value = act.avg_hr || '';
+  document.getElementById('prev-file-calories').value = act.calories ? Math.round(act.calories) : '';
+  document.getElementById('prev-file-desc').value = act.description || '';
+}
+
+async function handleSaveFileActivity() {
+  if (!parsedFileActivity) return;
+
+  const date = document.getElementById('prev-file-date').value;
+  const type = document.getElementById('prev-file-type').value;
+  const duration = parseFloat(document.getElementById('prev-file-duration').value) || 0;
+  const dist = parseFloat(document.getElementById('prev-file-distance').value) || null;
+  const speed = parseFloat(document.getElementById('prev-file-speed').value) || 4.0;
+  const hr = document.getElementById('prev-file-hr').value !== '' ? parseFloat(document.getElementById('prev-file-hr').value) : null;
+  const calories = parseFloat(document.getElementById('prev-file-calories').value) || 0;
+  const desc = document.getElementById('prev-file-desc').value.trim();
+
+  const payload = {
+    date: date,
+    activity_type: type,
+    description: desc,
+    duration_minutes: duration,
+    distance_km: dist,
+    speed_kmh: speed,
+    calories: calories,
+    auto_calories: calories === 0,
+    avg_hr: hr,
+    notes: "Importata da file"
+  };
+
+  try {
+    const res = await fetch('/api/activities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      alert("Attività salvata con successo!");
+      closeImportModal();
+      document.getElementById('file-preview-card').classList.add('hidden');
+      await loadActivitiesData();
+    } else {
+      const err = await res.json();
+      alert(`Errore: ${err.detail || 'Impossibile salvare l\'attività'}`);
+    }
+  } catch (err) {
+    console.error("Errore salvataggio file attività:", err);
   }
 }
 

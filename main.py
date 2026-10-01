@@ -790,14 +790,103 @@ def parse_strava_csv(content: str) -> List[Dict[str, Any]]:
     return activities
 
 
+def utc_to_local_iso(iso_str: Optional[str]) -> str:
+    """Converts a UTC or ISO timestamp (e.g. 2026-09-29T05:48:19Z) to local Europe/Rome YYYY-MM-DDTHH:MM."""
+    if not iso_str:
+        return datetime.datetime.now().strftime("%Y-%m-%dT%H:%M")
+    try:
+        clean_str = iso_str.strip()
+        if clean_str.endswith("Z"):
+            dt = datetime.datetime.fromisoformat(clean_str[:-1] + "+00:00")
+        elif "+" in clean_str[10:] or ("-" in clean_str[10:] and not clean_str[10:].startswith("-")):
+            dt = datetime.datetime.fromisoformat(clean_str)
+        else:
+            dt = datetime.datetime.fromisoformat(clean_str).replace(tzinfo=datetime.timezone.utc)
+
+        try:
+            from zoneinfo import ZoneInfo
+            tz = ZoneInfo("Europe/Rome")
+            local_dt = dt.astimezone(tz)
+        except Exception:
+            local_dt = dt.astimezone()
+        return local_dt.strftime("%Y-%m-%dT%H:%M")
+    except Exception:
+        return iso_str[:16]
+
+
+def parse_strava_html(content: str, filename: str) -> Dict[str, Any]:
+    """Parses an HTML activity page downloaded from Strava (when export_tcx redirects for indoor/treadmill workouts)."""
+    title_m = re.search(r"<h1[^>]*activity-name[^>]*>(.*?)</h1>", content, re.DOTALL)
+    if not title_m:
+        title_m = re.search(r"<title>(.*?)(?:\|.*)?</title>", content)
+    title = title_m.group(1).strip() if title_m else filename.rsplit(".", 1)[0]
+
+    m_dist = re.search(r"distance:\s*([\d.]+)", content)
+    m_time = re.search(r"moving_time:\s*([\d.]+)", content)
+    m_cal = re.search(r"calories:\s*([\d.]+)", content)
+    m_start = re.search(r"startDateLocal:\s*(\d+)", content)
+    m_trainer = re.search(r"trainer:\s*(true|false)", content)
+    m_speed = re.search(r"avg_speed:\s*([\d.]+)", content)
+    m_hr = re.search(r"avg_hr:\s*([\d.]+)", content)
+    m_id = re.search(r"/activities/(\d+)", content)
+
+    dist_km = round(float(m_dist.group(1)) / 1000, 2) if m_dist else 0.0
+    dur_min = round(float(m_time.group(1)) / 60, 1) if m_time else 0.0
+    cals = round(float(m_cal.group(1)), 1) if m_cal else 0.0
+    avg_hr = round(float(m_hr.group(1)), 1) if m_hr else None
+    speed_kmh = round(float(m_speed.group(1)) * 3.6, 1) if m_speed else 4.0
+    is_trainer = (m_trainer.group(1).lower() == "true") if m_trainer else False
+    strava_id = int(m_id.group(1)) if m_id else None
+
+    if not strava_id:
+        strava_id_m = re.search(r"(?:strava[_-]?)(\d+)", filename.lower())
+        strava_id = int(strava_id_m.group(1)) if strava_id_m else None
+
+    if m_start:
+        try:
+            ts = int(m_start.group(1))
+            date_str = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M")
+        except Exception:
+            date_str = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M")
+    else:
+        date_str = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M")
+
+    act_type = "walking_pad" if is_trainer else "outdoor_walking"
+    title_lower = title.lower()
+    if "biking" in title_lower or "ciclismo" in title_lower or "cyclette" in title_lower:
+        act_type = "cyclette"
+    elif "aperto" in title_lower or "outdoor" in title_lower:
+        act_type = "outdoor_walking"
+
+    return {
+        "date": date_str,
+        "activity_type": act_type,
+        "description": title,
+        "duration_minutes": dur_min,
+        "distance_km": dist_km,
+        "speed_kmh": speed_kmh,
+        "calories": cals,
+        "avg_hr": avg_hr,
+        "auto_calories": cals == 0,
+        "strava_id": strava_id
+    }
+
+
 def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+    # 1. Strava activities.csv
     if filename.lower().endswith(".csv") or "activity id" in content[:250].lower():
         return parse_strava_csv(content)
 
+    # 2. HTML downloaded from Strava (redirect for indoor / treadmill activities without GPS TCX)
+    content_stripped = content.strip()
+    if content_stripped.startswith("<!DOCTYPE html") or "<html" in content[:300].lower() or "pageView.activity()" in content:
+        return parse_strava_html(content, filename)
+
+    # 3. XML (TCX / GPX)
     try:
         root = ET.fromstring(content.encode("utf-8"))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"File XML non valido o corrotto: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"File non riconosciuto o corrotto: {str(e)}")
 
     tag_clean = root.tag.split("}")[-1].lower() if "}" in root.tag else root.tag.lower()
 
@@ -810,7 +899,14 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
         act_id = root.findtext(".//{*}Id")
         if act_id is None:
             act_id = root.findtext(".//Id")
-        date_str = act_id[:16] if act_id else datetime.datetime.now().strftime("%Y-%m-%dT%H:%M")
+        if not act_id:
+            first_lap = root.find(".//{*}Lap")
+            if first_lap is None:
+                first_lap = root.find(".//Lap")
+            if first_lap is not None:
+                act_id = first_lap.attrib.get("StartTime")
+
+        date_str = utc_to_local_iso(act_id)
 
         total_seconds = 0.0
         total_distance_m = 0.0
@@ -908,7 +1004,7 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
         for i in range(len(coords) - 1):
             tot_dist += haversine_km(coords[i][0], coords[i][1], coords[i+1][0], coords[i+1][1])
 
-        date_str = times[0][:16] if times else datetime.datetime.now().strftime("%Y-%m-%dT%H:%M")
+        date_str = utc_to_local_iso(times[0]) if times else datetime.datetime.now().strftime("%Y-%m-%dT%H:%M")
         dur_min = 0.0
         if len(times) >= 2:
             try:

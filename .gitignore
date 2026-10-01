@@ -40,3 +40,6 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# User imports
+FileStrava/

@@ -1464,7 +1464,7 @@ function calculateEstimatedCalories(durationMinutes, speedKmh) {
   const durationHours = (parseFloat(durationMinutes) || 0) / 60;
   const speed = parseFloat(speedKmh) || 4.0;
   const cals = durationHours * speed * userWeight * 0.75;
-  return Math.round(cals);
+  return Math.round(cals * 10) / 10;
 }
 
 function updateModalCalories() {
@@ -1572,7 +1572,7 @@ function renderActivitiesKPIs() {
   });
   const avgSpeed = totalMin > 0 ? (totalSpeedWeighted / totalMin) : 0;
 
-  if (kpiMinutes) kpiMinutes.textContent = `${Math.round(totalMin)} min`;
+  if (kpiMinutes) kpiMinutes.textContent = `${(totalMin % 1 === 0) ? totalMin : totalMin.toFixed(1)} min`;
   if (kpiCalories) kpiCalories.textContent = `${Math.round(totalCal)} kcal`;
   if (kpiSessions) kpiSessions.textContent = `${sessionCount} sessioni`;
   if (kpiAvgSpeed) kpiAvgSpeed.textContent = sessionCount > 0 ? `Distanza: ${totalKm.toFixed(2)} km • Media: ${avgSpeed.toFixed(1)} km/h` : "Distanza: 0.00 km • Media: -- km/h";
@@ -1656,7 +1656,7 @@ function renderActivitiesList() {
         </div>
         <div class="act-right">
           <div class="act-stat">
-            <div class="act-stat-val">⏱️ ${act.duration_minutes} min</div>
+            <div class="act-stat-val">⏱️ ${(parseFloat(act.duration_minutes) % 1 === 0) ? act.duration_minutes : parseFloat(act.duration_minutes).toFixed(1)} min</div>
             <div class="act-stat-sub">${distVal ? '📍 ' + distVal + ' km • ' : ''}💨 ${act.speed_kmh ? act.speed_kmh + ' km/h' : '-'}</div>
           </div>
           <div class="act-stat">
@@ -1876,7 +1876,7 @@ function addPresetEditorRow(preset = null, idx = 0) {
     </div>
     <div style="width: 75px;">
       <label style="font-size: 10.5px; font-weight: 600; display: block; margin-bottom: 2px;">Minuti</label>
-      <input type="number" class="form-input p-duration" value="${duration}" min="1" max="300" required>
+      <input type="number" class="form-input p-duration" value="${duration}" step="0.1" min="0.1" max="300" required>
     </div>
     <div style="width: 75px;">
       <label style="font-size: 10.5px; font-weight: 600; display: block; margin-bottom: 2px;">km/h</label>
@@ -2353,6 +2353,13 @@ function showBatchFilePreview(acts) {
   const titleEl = document.getElementById('file-batch-title');
   card.classList.remove('hidden');
 
+  acts.forEach(act => {
+    if (!act.calories || act.calories === 0) {
+      act.calories = calculateEstimatedCalories(act.duration_minutes, act.speed_kmh);
+      act.auto_calories = true;
+    }
+  });
+
   const existingStravaIds = new Set(activities.filter(a => a.strava_id).map(a => Number(a.strava_id)));
   const existingDates = new Set(activities.filter(a => a.date).map(a => a.date.substring(0, 16)));
 
@@ -2385,7 +2392,7 @@ function showBatchFilePreview(acts) {
             <option value="other" ${act.activity_type === 'other' ? 'selected' : ''}>⚡ Altro</option>
           </select>
         </td>
-        <td>${act.duration_minutes} min</td>
+        <td>${(parseFloat(act.duration_minutes) % 1 === 0) ? act.duration_minutes : parseFloat(act.duration_minutes).toFixed(1)} min</td>
         <td>${act.distance_km ? act.distance_km.toFixed(2) + ' km' : '-'}</td>
         <td>${act.avg_hr ? `<span class="badge badge-hr">❤️ ${Math.round(act.avg_hr)} bpm</span>` : '-'}</td>
         <td>${act.calories ? Math.round(act.calories) + ' kcal' : '-'}</td>
@@ -2480,6 +2487,11 @@ async function handleSaveBatchFileActivities() {
 function showFilePreview(act) {
   const card = document.getElementById('file-preview-card');
   card.classList.remove('hidden');
+
+  if (!act.calories || act.calories === 0) {
+    act.calories = calculateEstimatedCalories(act.duration_minutes, act.speed_kmh);
+    act.auto_calories = true;
+  }
 
   document.getElementById('prev-file-date').value = act.date || '';
   document.getElementById('prev-file-type').value = act.activity_type || 'outdoor_walking';

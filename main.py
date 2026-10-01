@@ -487,6 +487,24 @@ def save_activity_presets(presets: List[ActivityPreset]):
     return preset_dicts
 
 
+def estimate_calories(duration_minutes: float, speed_kmh: Optional[float] = None, activity_type: str = "walking_pad") -> float:
+    """Calculates estimated calories burned based on current user weight, duration, and speed."""
+    user_weight = 105.0
+    try:
+        weights_data = load_json(WEIGHT_FILE, [])
+        if weights_data:
+            valid_weights = [w.get("weight") for w in weights_data if w.get("weight")]
+            if valid_weights:
+                user_weight = float(valid_weights[-1])
+    except Exception:
+        pass
+
+    dur_hours = (float(duration_minutes) if duration_minutes else 0.0) / 60.0
+    speed = float(speed_kmh) if (speed_kmh and speed_kmh > 0) else 4.0
+    cals = dur_hours * speed * user_weight * 0.75
+    return round(cals, 1)
+
+
 # ACTIVITIES TRACKING ENDPOINTS
 @app.get("/api/activities")
 def get_activities():
@@ -499,6 +517,9 @@ def get_activities():
 def add_activity(entry: ActivityEntry):
     activities = load_json(ACTIVITIES_FILE, [])
     entry_dict = entry.model_dump()
+    if (entry_dict.get("calories") is None or entry_dict.get("calories") == 0) and entry_dict.get("auto_calories", True):
+        entry_dict["calories"] = estimate_calories(entry_dict.get("duration_minutes", 0), entry_dict.get("speed_kmh", 4.0), entry_dict.get("activity_type", "walking_pad"))
+
     if not entry.id:
         entry_dict["id"] = f"act_{int(time.time() * 1000)}"
         activities.append(entry_dict)
@@ -656,6 +677,13 @@ def get_strava_activities():
         if avg_hr:
             avg_hr = round(float(avg_hr), 1)
 
+        if calories is None or calories == 0:
+            cals_val = estimate_calories(duration_min, speed_kmh, act_type)
+            auto_cal_val = True
+        else:
+            cals_val = round(calories, 1)
+            auto_cal_val = False
+
         parsed.append({
             "strava_id": strava_id,
             "date": date_formatted,
@@ -664,8 +692,8 @@ def get_strava_activities():
             "duration_minutes": duration_min,
             "distance_km": dist_km,
             "speed_kmh": speed_kmh,
-            "calories": round(calories, 1) if calories is not None else 0.0,
-            "auto_calories": calories is None or calories == 0,
+            "calories": cals_val,
+            "auto_calories": auto_cal_val,
             "avg_hr": avg_hr,
             "is_imported": strava_id in imported_strava_ids
         })
@@ -684,6 +712,9 @@ def import_strava_activities(req: StravaImportRequest):
         if act.strava_id and act.strava_id in existing_strava_ids:
             continue
         act_dict = act.model_dump()
+        if (act_dict.get("calories") is None or act_dict.get("calories") == 0) and act_dict.get("auto_calories", True):
+            act_dict["calories"] = estimate_calories(act_dict.get("duration_minutes", 0), act_dict.get("speed_kmh", 4.0), act_dict.get("activity_type", "walking_pad"))
+
         if not act_dict.get("id"):
             act_dict["id"] = f"act_strava_{now_ms}_{i}"
         activities.append(act_dict)
@@ -774,6 +805,13 @@ def parse_strava_csv(content: str) -> List[Dict[str, Any]]:
         except ValueError:
             cals = 0.0
 
+        if cals == 0:
+            cals = estimate_calories(dur_min, speed, act_type)
+            is_auto_cal = True
+        else:
+            cals = round(cals, 1)
+            is_auto_cal = False
+
         activities.append({
             "strava_id": act_id,
             "date": date_str,
@@ -782,8 +820,8 @@ def parse_strava_csv(content: str) -> List[Dict[str, Any]]:
             "duration_minutes": dur_min,
             "distance_km": dist_km,
             "speed_kmh": speed,
-            "calories": round(cals, 1),
-            "auto_calories": cals == 0,
+            "calories": cals,
+            "auto_calories": is_auto_cal,
             "avg_hr": round(avg_hr, 1) if avg_hr else None,
             "is_imported": act_id in existing_strava_ids if act_id else False
         })
@@ -858,6 +896,12 @@ def parse_strava_html(content: str, filename: str) -> Dict[str, Any]:
     elif "aperto" in title_lower or "outdoor" in title_lower:
         act_type = "outdoor_walking"
 
+    if cals == 0:
+        cals = estimate_calories(dur_min, speed_kmh, act_type)
+        is_auto_cal = True
+    else:
+        is_auto_cal = False
+
     return {
         "date": date_str,
         "activity_type": act_type,
@@ -867,7 +911,7 @@ def parse_strava_html(content: str, filename: str) -> Dict[str, Any]:
         "speed_kmh": speed_kmh,
         "calories": cals,
         "avg_hr": avg_hr,
-        "auto_calories": cals == 0,
+        "auto_calories": is_auto_cal,
         "strava_id": strava_id
     }
 
@@ -960,6 +1004,12 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
         strava_id_m = re.search(r"(?:strava[_-]?)(\d+)", filename.lower())
         strava_id_val = int(strava_id_m.group(1)) if strava_id_m else None
 
+        if total_calories == 0:
+            total_calories = estimate_calories(dur_min, speed, act_type)
+            is_auto_cal = True
+        else:
+            is_auto_cal = False
+
         return {
             "date": date_str,
             "activity_type": act_type,
@@ -969,7 +1019,7 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
             "speed_kmh": speed,
             "calories": total_calories,
             "avg_hr": avg_hr,
-            "auto_calories": total_calories == 0,
+            "auto_calories": is_auto_cal,
             "strava_id": strava_id_val
         }
 
@@ -1021,6 +1071,7 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
         act_type = "walking_pad" if "tapis" in trk_name.lower() or "pad" in trk_name.lower() else "outdoor_walking"
         strava_id_m = re.search(r"(?:strava[_-]?)(\d+)", filename.lower())
         strava_id_val = int(strava_id_m.group(1)) if strava_id_m else None
+        gpx_cals = estimate_calories(dur_min, speed, act_type)
 
         return {
             "date": date_str,
@@ -1029,7 +1080,7 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
             "duration_minutes": dur_min,
             "distance_km": dist_km,
             "speed_kmh": speed,
-            "calories": 0.0,
+            "calories": gpx_cals,
             "avg_hr": avg_hr,
             "auto_calories": True,
             "strava_id": strava_id_val

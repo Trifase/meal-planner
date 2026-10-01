@@ -197,7 +197,10 @@ function setupEventListeners() {
   document.getElementById('btn-import-selected-strava').addEventListener('click', handleImportSelectedStrava);
   document.getElementById('btn-browse-file').addEventListener('click', () => document.getElementById('fitness-file-input').click());
   document.getElementById('fitness-file-input').addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length) handleFitnessFiles(e.target.files);
+    if (e.target.files && e.target.files.length) {
+      handleFitnessFiles(e.target.files);
+    }
+    e.target.value = '';
   });
   document.getElementById('btn-save-file-activity').addEventListener('click', handleSaveFileActivity);
   document.getElementById('file-batch-select-all').addEventListener('change', toggleBatchFileSelectAll);
@@ -2281,7 +2284,15 @@ async function handleFitnessFiles(files) {
   batchParsedActivities = [];
   const fileList = Array.from(files);
 
-  for (const file of fileList) {
+  const loader = document.getElementById('file-loading-indicator');
+  const loaderText = document.getElementById('file-loading-text');
+  if (loader) {
+    loader.classList.remove('hidden');
+    loaderText.textContent = `Caricamento e analisi di ${fileList.length} file in corso...`;
+  }
+
+  let processedCount = 0;
+  const parsePromises = fileList.map(async (file) => {
     try {
       const content = await readFileAsText(file);
       const res = await fetch('/api/activities/parse-file', {
@@ -2289,19 +2300,32 @@ async function handleFitnessFiles(files) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file.name, content: content })
       });
+      processedCount++;
+      if (loaderText) {
+        loaderText.textContent = `Analisi in corso: ${processedCount} di ${fileList.length} file completati...`;
+      }
       if (res.ok) {
-        const parsed = await res.json();
-        if (Array.isArray(parsed)) {
-          batchParsedActivities.push(...parsed);
-        } else {
-          batchParsedActivities.push(parsed);
-        }
+        return await res.json();
       } else {
         const err = await res.json();
         console.warn(`Errore file ${file.name}:`, err.detail);
+        return null;
       }
     } catch (err) {
       console.error("Errore lettura file:", file.name, err);
+      return null;
+    }
+  });
+
+  const results = await Promise.all(parsePromises);
+  if (loader) loader.classList.add('hidden');
+
+  for (const parsed of results) {
+    if (!parsed) continue;
+    if (Array.isArray(parsed)) {
+      batchParsedActivities.push(...parsed);
+    } else {
+      batchParsedActivities.push(parsed);
     }
   }
 
@@ -2309,6 +2333,9 @@ async function handleFitnessFiles(files) {
     alert("Nessun dato attività valido trovato nei file selezionati.");
     return;
   }
+
+  // Sort descending by date
+  batchParsedActivities.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   if (batchParsedActivities.length === 1 && !fileList[0].name.toLowerCase().endsWith('.csv')) {
     document.getElementById('file-batch-card').classList.add('hidden');
@@ -2326,14 +2353,22 @@ function showBatchFilePreview(acts) {
   const titleEl = document.getElementById('file-batch-title');
   card.classList.remove('hidden');
 
-  titleEl.textContent = `📋 ${acts.length} Attività Rilevate nei File:`;
+  const existingStravaIds = new Set(activities.filter(a => a.strava_id).map(a => Number(a.strava_id)));
+  const existingDates = new Set(activities.filter(a => a.date).map(a => a.date.substring(0, 16)));
 
-  const existingStravaIds = new Set(activities.filter(a => a.strava_id).map(a => a.strava_id));
+  const importedCount = acts.filter(act => 
+    (act.strava_id && existingStravaIds.has(Number(act.strava_id))) || 
+    (act.date && existingDates.has(act.date.substring(0, 16)))
+  ).length;
+  const newCount = acts.length - importedCount;
+
+  titleEl.textContent = `📋 ${acts.length} Attività Rilevate nei File (${newCount} nuove, ${importedCount} già salvate):`;
 
   tbody.innerHTML = acts.map((act, idx) => {
-    const dtParts = act.date.split('T');
+    const dtParts = (act.date || '').split('T');
     const dateDisp = `${formatDateDisplay(dtParts[0])} ${dtParts[1] ? dtParts[1].substring(0, 5) : ''}`;
-    const isImported = act.strava_id && existingStravaIds.has(act.strava_id);
+    const isImported = (act.strava_id && existingStravaIds.has(Number(act.strava_id))) || 
+                       (act.date && existingDates.has(act.date.substring(0, 16)));
 
     return `
       <tr style="${isImported ? 'opacity: 0.6; background: #f8fafc;' : ''}">
@@ -2341,7 +2376,7 @@ function showBatchFilePreview(acts) {
           <input type="checkbox" class="file-batch-chk" data-idx="${idx}" ${isImported ? 'disabled' : 'checked'}>
         </td>
         <td><strong>${dateDisp}</strong></td>
-        <td style="font-weight: 500;">${act.description}</td>
+        <td style="font-weight: 500;">${act.description || 'Attività senza nome'}</td>
         <td>
           <select class="form-input file-batch-type-sel" data-idx="${idx}" style="font-size: 11px; padding: 2px 4px; height: 26px;" ${isImported ? 'disabled' : ''}>
             <option value="walking_pad" ${act.activity_type === 'walking_pad' ? 'selected' : ''}>🚶 Tapis</option>

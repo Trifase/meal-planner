@@ -719,7 +719,7 @@
       <!-- Tab Switcher inside Import Modal -->
       <div class="import-modal-tabs">
         <button type="button" class="import-tab-btn active" id="btn-tab-strava">⚡ Strava Cloud Sync</button>
-        <button type="button" class="import-tab-btn" id="btn-tab-file">📁 File Diretto (.tcx / .gpx)</button>
+        <button type="button" class="import-tab-btn" id="btn-tab-file">📁 File Tracciati (.tcx / .gpx / .csv)</button>
       </div>
 
       <div class="modal-body">
@@ -811,6 +811,10 @@
             <button type="button" class="btn btn-outline" id="btn-browse-file" style="margin-top: 10px;">
               Sfoglia File dal Computer (anche multipli)
             </button>
+          </div>
+
+          <div id="file-loading-indicator" class="hidden" style="text-align: center; padding: 14px; font-weight: 500; color: var(--primary);">
+            ⏳ <span id="file-loading-text">Analisi file in corso...</span>
           </div>
 
           <!-- Batch Table when multiple files or CSV are parsed -->

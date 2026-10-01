@@ -861,6 +861,9 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
             act_type = "outdoor_walking"
 
         clean_title = filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ").capitalize()
+        strava_id_m = re.search(r"(?:strava[_-]?)(\d+)", filename.lower())
+        strava_id_val = int(strava_id_m.group(1)) if strava_id_m else None
+
         return {
             "date": date_str,
             "activity_type": act_type,
@@ -870,7 +873,8 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
             "speed_kmh": speed,
             "calories": total_calories,
             "avg_hr": avg_hr,
-            "auto_calories": total_calories == 0
+            "auto_calories": total_calories == 0,
+            "strava_id": strava_id_val
         }
 
     elif "gpx" in tag_clean or filename.lower().endswith(".gpx"):
@@ -919,6 +923,8 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
         avg_hr = round(sum(hrs) / len(hrs), 1) if hrs else None
 
         act_type = "walking_pad" if "tapis" in trk_name.lower() or "pad" in trk_name.lower() else "outdoor_walking"
+        strava_id_m = re.search(r"(?:strava[_-]?)(\d+)", filename.lower())
+        strava_id_val = int(strava_id_m.group(1)) if strava_id_m else None
 
         return {
             "date": date_str,
@@ -929,7 +935,8 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
             "speed_kmh": speed,
             "calories": 0.0,
             "avg_hr": avg_hr,
-            "auto_calories": True
+            "auto_calories": True,
+            "strava_id": strava_id_val
         }
 
     else:

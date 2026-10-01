@@ -197,9 +197,11 @@ function setupEventListeners() {
   document.getElementById('btn-import-selected-strava').addEventListener('click', handleImportSelectedStrava);
   document.getElementById('btn-browse-file').addEventListener('click', () => document.getElementById('fitness-file-input').click());
   document.getElementById('fitness-file-input').addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length) handleFitnessFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length) handleFitnessFiles(e.target.files);
   });
   document.getElementById('btn-save-file-activity').addEventListener('click', handleSaveFileActivity);
+  document.getElementById('file-batch-select-all').addEventListener('change', toggleBatchFileSelectAll);
+  document.getElementById('btn-save-batch-activities').addEventListener('click', handleSaveBatchFileActivities);
   setupFileDropzone();
 
   // Activity Period Filter buttons
@@ -2258,35 +2260,186 @@ function setupFileDropzone() {
 
   dropzone.addEventListener('drop', (e) => {
     if (e.dataTransfer.files && e.dataTransfer.files.length) {
-      handleFitnessFile(e.dataTransfer.files[0]);
+      handleFitnessFiles(e.dataTransfer.files);
     }
   });
 }
 
-function handleFitnessFile(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const content = e.target.result;
+let batchParsedActivities = [];
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+async function handleFitnessFiles(files) {
+  if (!files || files.length === 0) return;
+  batchParsedActivities = [];
+  const fileList = Array.from(files);
+
+  for (const file of fileList) {
     try {
+      const content = await readFileAsText(file);
       const res = await fetch('/api/activities/parse-file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file.name, content: content })
       });
-      if (!res.ok) {
+      if (res.ok) {
+        const parsed = await res.json();
+        if (Array.isArray(parsed)) {
+          batchParsedActivities.push(...parsed);
+        } else {
+          batchParsedActivities.push(parsed);
+        }
+      } else {
         const err = await res.json();
-        alert(`Errore lettura file: ${err.detail || 'Formato non valido'}`);
-        return;
+        console.warn(`Errore file ${file.name}:`, err.detail);
       }
-      parsedFileActivity = await res.json();
-      showFilePreview(parsedFileActivity);
     } catch (err) {
-      console.error("Errore parse file:", err);
-      alert("Errore durante l'invio del file al server");
+      console.error("Errore lettura file:", file.name, err);
     }
-  };
-  reader.readAsText(file);
+  }
+
+  if (batchParsedActivities.length === 0) {
+    alert("Nessun dato attività valido trovato nei file selezionati.");
+    return;
+  }
+
+  if (batchParsedActivities.length === 1 && !fileList[0].name.toLowerCase().endsWith('.csv')) {
+    document.getElementById('file-batch-card').classList.add('hidden');
+    parsedFileActivity = batchParsedActivities[0];
+    showFilePreview(parsedFileActivity);
+  } else {
+    document.getElementById('file-preview-card').classList.add('hidden');
+    showBatchFilePreview(batchParsedActivities);
+  }
+}
+
+function showBatchFilePreview(acts) {
+  const card = document.getElementById('file-batch-card');
+  const tbody = document.getElementById('file-batch-tbody');
+  const titleEl = document.getElementById('file-batch-title');
+  card.classList.remove('hidden');
+
+  titleEl.textContent = `📋 ${acts.length} Attività Rilevate nei File:`;
+
+  const existingStravaIds = new Set(activities.filter(a => a.strava_id).map(a => a.strava_id));
+
+  tbody.innerHTML = acts.map((act, idx) => {
+    const dtParts = act.date.split('T');
+    const dateDisp = `${formatDateDisplay(dtParts[0])} ${dtParts[1] ? dtParts[1].substring(0, 5) : ''}`;
+    const isImported = act.strava_id && existingStravaIds.has(act.strava_id);
+
+    return `
+      <tr style="${isImported ? 'opacity: 0.6; background: #f8fafc;' : ''}">
+        <td style="text-align: center;">
+          <input type="checkbox" class="file-batch-chk" data-idx="${idx}" ${isImported ? 'disabled' : 'checked'}>
+        </td>
+        <td><strong>${dateDisp}</strong></td>
+        <td style="font-weight: 500;">${act.description}</td>
+        <td>
+          <select class="form-input file-batch-type-sel" data-idx="${idx}" style="font-size: 11px; padding: 2px 4px; height: 26px;" ${isImported ? 'disabled' : ''}>
+            <option value="walking_pad" ${act.activity_type === 'walking_pad' ? 'selected' : ''}>🚶 Tapis</option>
+            <option value="outdoor_walking" ${act.activity_type === 'outdoor_walking' ? 'selected' : ''}>🌲 Aperto</option>
+            <option value="cyclette" ${act.activity_type === 'cyclette' ? 'selected' : ''}>🚴 Cyclette</option>
+            <option value="other" ${act.activity_type === 'other' ? 'selected' : ''}>⚡ Altro</option>
+          </select>
+        </td>
+        <td>${act.duration_minutes} min</td>
+        <td>${act.distance_km ? act.distance_km.toFixed(2) + ' km' : '-'}</td>
+        <td>${act.avg_hr ? `<span class="badge badge-hr">❤️ ${Math.round(act.avg_hr)} bpm</span>` : '-'}</td>
+        <td>${act.calories ? Math.round(act.calories) + ' kcal' : '-'}</td>
+        <td>
+          ${isImported ? `<span class="badge badge-prep" style="background: #e2e8f0; color: #475569;">✅ Già presente</span>` : `<span class="badge badge-prep" style="background: #ecfdf5; color: #047857;">Pronta</span>`}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  document.querySelectorAll('.file-batch-type-sel').forEach(sel => {
+    sel.addEventListener('change', (e) => {
+      const idx = parseInt(e.target.dataset.idx);
+      if (batchParsedActivities[idx]) {
+        batchParsedActivities[idx].activity_type = e.target.value;
+      }
+    });
+  });
+
+  updateBatchImportBtn();
+  document.querySelectorAll('.file-batch-chk').forEach(chk => {
+    chk.addEventListener('change', updateBatchImportBtn);
+  });
+}
+
+function toggleBatchFileSelectAll(e) {
+  const checked = e.target.checked;
+  document.querySelectorAll('.file-batch-chk:not(:disabled)').forEach(chk => {
+    chk.checked = checked;
+  });
+  updateBatchImportBtn();
+}
+
+function updateBatchImportBtn() {
+  const selected = document.querySelectorAll('.file-batch-chk:checked');
+  const btn = document.getElementById('btn-save-batch-activities');
+  if (selected.length > 0) {
+    btn.disabled = false;
+    btn.textContent = `📥 Importa Selezionate (${selected.length}) in Trifitness`;
+  } else {
+    btn.disabled = true;
+    btn.textContent = `📥 Importa Selezionate in Trifitness`;
+  }
+}
+
+async function handleSaveBatchFileActivities() {
+  const selectedChks = document.querySelectorAll('.file-batch-chk:checked');
+  if (selectedChks.length === 0) return;
+
+  const toImport = [];
+  selectedChks.forEach(chk => {
+    const idx = parseInt(chk.dataset.idx);
+    if (batchParsedActivities[idx]) {
+      const act = batchParsedActivities[idx];
+      toImport.push({
+        date: act.date,
+        activity_type: act.activity_type,
+        description: act.description,
+        duration_minutes: act.duration_minutes,
+        distance_km: act.distance_km,
+        speed_kmh: act.speed_kmh,
+        calories: act.calories,
+        auto_calories: act.auto_calories,
+        strava_id: act.strava_id,
+        avg_hr: act.avg_hr,
+        notes: "Importata da file / archivio"
+      });
+    }
+  });
+
+  try {
+    const res = await fetch('/api/strava/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activities: toImport })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      alert(`Importate con successo ${data.imported_count} attività!`);
+      closeImportModal();
+      document.getElementById('file-batch-card').classList.add('hidden');
+      await loadActivitiesData();
+    } else {
+      alert("Errore durante l'importazione");
+    }
+  } catch (err) {
+    console.error("Errore salvataggio batch:", err);
+    alert("Errore di rete");
+  }
 }
 
 function showFilePreview(act) {

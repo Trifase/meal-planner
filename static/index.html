@@ -801,16 +801,46 @@
           </div>
         </div>
 
-        <!-- SUB-TAB 2: FILE DIRECT (TCX / GPX) -->
+        <!-- SUB-TAB 2: FILE DIRECT (TCX / GPX / CSV STRAVA) -->
         <div id="import-subtab-file" class="hidden">
           <div class="file-dropzone" id="file-dropzone">
             <div class="dropzone-icon">📁</div>
-            <div class="dropzone-title">Trascina qui il file esportato da Mi Fitness o Strava</div>
-            <div class="dropzone-desc">Supporta file <strong>.TCX</strong> e <strong>.GPX</strong> con battiti cardiaci e dati GPS/passi</div>
-            <input type="file" id="fitness-file-input" accept=".tcx,.gpx,application/xml,text/xml" style="display: none;">
+            <div class="dropzone-title">Trascina qui uno o più file (.tcx, .gpx o activities.csv di Strava)</div>
+            <div class="dropzone-desc">Supporta caricamento singolo o multiplo simultaneo con battiti cardiaci e dati GPS/passi</div>
+            <input type="file" id="fitness-file-input" accept=".tcx,.gpx,.csv,application/xml,text/xml,text/csv" style="display: none;" multiple>
             <button type="button" class="btn btn-outline" id="btn-browse-file" style="margin-top: 10px;">
-              Sfoglia File dal Computer
+              Sfoglia File dal Computer (anche multipli)
             </button>
+          </div>
+
+          <!-- Batch Table when multiple files or CSV are parsed -->
+          <div id="file-batch-card" class="file-preview-card hidden">
+            <div class="flex-between" style="align-items: center; margin-bottom: 8px;">
+              <h4 id="file-batch-title">📋 Attività Rilevate nei File:</h4>
+              <button type="button" class="btn btn-primary" id="btn-save-batch-activities">
+                📥 Importa Selezionate in Trifitness
+              </button>
+            </div>
+            <div class="table-responsive" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 36px; text-align: center;"><input type="checkbox" id="file-batch-select-all" checked></th>
+                    <th>Data / Ora</th>
+                    <th>Descrizione</th>
+                    <th>Tipo</th>
+                    <th>Durata</th>
+                    <th>Distanza</th>
+                    <th>Freq. Cardiaca</th>
+                    <th>Calorie</th>
+                    <th>Stato</th>
+                  </tr>
+                </thead>
+                <tbody id="file-batch-tbody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div id="file-preview-card" class="file-preview-card hidden">

@@ -1,4 +1,6 @@
+import csv
 import datetime
+import io
 import json
 import math
 import os
@@ -706,7 +708,92 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return r * c
 
 
-def parse_fitness_file(filename: str, content: str) -> Dict[str, Any]:
+def parse_strava_date(d_str: str) -> str:
+    d_str = d_str.strip().strip('"')
+    formats = [
+        "%d %b %Y, %H:%M:%S",
+        "%b %d, %Y, %I:%M:%S %p",
+        "%b %d, %Y, %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%dT%H:%M:%S",
+    ]
+    for fmt in formats:
+        try:
+            dt = datetime.datetime.strptime(d_str, fmt)
+            return dt.strftime("%Y-%m-%dT%H:%M")
+        except ValueError:
+            pass
+    return d_str[:16]
+
+
+def parse_strava_csv(content: str) -> List[Dict[str, Any]]:
+    existing_activities = load_json(ACTIVITIES_FILE, [])
+    existing_strava_ids = {a.get("strava_id") for a in existing_activities if a.get("strava_id")}
+
+    reader = csv.DictReader(io.StringIO(content))
+    activities = []
+    for row in reader:
+        act_id_raw = row.get("Activity ID")
+        act_id = int(act_id_raw) if act_id_raw and act_id_raw.isdigit() else None
+        name = row.get("Activity Name") or row.get("Name") or "Attività Strava"
+        sport = (row.get("Activity Type") or row.get("Type") or "Walk").lower()
+
+        if "pad" in name.lower() or "tapis" in name.lower() or "virtualwalk" in sport:
+            act_type = "walking_pad"
+        elif "ride" in sport or "cycle" in sport:
+            act_type = "cyclette"
+        elif "walk" in sport or "run" in sport or "hike" in sport:
+            act_type = "outdoor_walking"
+        else:
+            act_type = "other"
+
+        date_str = parse_strava_date(row.get("Activity Date") or row.get("Date") or "")
+
+        try:
+            m_time = float(row.get("Moving Time") or row.get("Elapsed Time") or 0)
+        except ValueError:
+            m_time = 0
+
+        try:
+            dist_val = float(row.get("Distance") or 0)
+            dist_km = round(dist_val / 1000, 2) if dist_val > 100 else round(dist_val, 2)
+        except ValueError:
+            dist_km = 0.0
+
+        dur_min = round(m_time / 60, 1)
+        speed = round((dist_km / (dur_min / 60)), 1) if dur_min > 0 and dist_km > 0 else 4.0
+
+        try:
+            avg_hr = float(row.get("Average Heart Rate")) if row.get("Average Heart Rate") else None
+        except ValueError:
+            avg_hr = None
+
+        try:
+            cals = float(row.get("Calories")) if row.get("Calories") else 0.0
+        except ValueError:
+            cals = 0.0
+
+        activities.append({
+            "strava_id": act_id,
+            "date": date_str,
+            "activity_type": act_type,
+            "description": name,
+            "duration_minutes": dur_min,
+            "distance_km": dist_km,
+            "speed_kmh": speed,
+            "calories": round(cals, 1),
+            "auto_calories": cals == 0,
+            "avg_hr": round(avg_hr, 1) if avg_hr else None,
+            "is_imported": act_id in existing_strava_ids if act_id else False
+        })
+    return activities
+
+
+def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+    if filename.lower().endswith(".csv") or "activity id" in content[:250].lower():
+        return parse_strava_csv(content)
+
     try:
         root = ET.fromstring(content.encode("utf-8"))
     except Exception as e:

@@ -2347,6 +2347,14 @@ async function handleFitnessFiles(files) {
   }
 }
 
+function cleanActivityTitle(name) {
+  if (!name) return 'Attività';
+  let clean = name.replace(/\.[a-zA-Z0-9]+$/, '');
+  clean = clean.replace(/[_-]+/g, ' ');
+  clean = clean.replace(/\s*\(\d+\)\s*/g, ' ');
+  return clean.replace(/\s+/g, ' ').trim();
+}
+
 function showBatchFilePreview(acts) {
   const card = document.getElementById('file-batch-card');
   const tbody = document.getElementById('file-batch-tbody');
@@ -2354,6 +2362,7 @@ function showBatchFilePreview(acts) {
   card.classList.remove('hidden');
 
   acts.forEach(act => {
+    act.description = cleanActivityTitle(act.description);
     if (!act.calories || act.calories === 0) {
       act.calories = calculateEstimatedCalories(act.duration_minutes, act.speed_kmh);
       act.auto_calories = true;
@@ -2450,7 +2459,7 @@ async function handleSaveBatchFileActivities() {
       toImport.push({
         date: act.date,
         activity_type: act.activity_type,
-        description: act.description,
+        description: cleanActivityTitle(act.description),
         duration_minutes: act.duration_minutes,
         distance_km: act.distance_km,
         speed_kmh: act.speed_kmh,
@@ -2500,7 +2509,7 @@ function showFilePreview(act) {
   document.getElementById('prev-file-speed').value = act.speed_kmh || '';
   document.getElementById('prev-file-hr').value = act.avg_hr || '';
   document.getElementById('prev-file-calories').value = act.calories ? Math.round(act.calories) : '';
-  document.getElementById('prev-file-desc').value = act.description || '';
+  document.getElementById('prev-file-desc').value = cleanActivityTitle(act.description) || '';
 }
 
 async function handleSaveFileActivity() {

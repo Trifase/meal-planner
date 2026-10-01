@@ -758,6 +758,17 @@ def parse_strava_date(d_str: str) -> str:
     return d_str[:16]
 
 
+def clean_activity_title(name: str) -> str:
+    """Removes file extensions, underscores, and duplicate numbers like (2) from title."""
+    if not name:
+        return "Attività"
+    if "." in name:
+        name = name.rsplit(".", 1)[0]
+    name = name.replace("_", " ").replace("-", " ")
+    name = re.sub(r"\s*\(\d+\)\s*", " ", name)
+    return re.sub(r"\s+", " ", name).strip()
+
+
 def parse_strava_csv(content: str) -> List[Dict[str, Any]]:
     existing_activities = load_json(ACTIVITIES_FILE, [])
     existing_strava_ids = {a.get("strava_id") for a in existing_activities if a.get("strava_id")}
@@ -767,7 +778,7 @@ def parse_strava_csv(content: str) -> List[Dict[str, Any]]:
     for row in reader:
         act_id_raw = row.get("Activity ID")
         act_id = int(act_id_raw) if act_id_raw and act_id_raw.isdigit() else None
-        name = row.get("Activity Name") or row.get("Name") or "Attività Strava"
+        name = clean_activity_title(row.get("Activity Name") or row.get("Name") or "Attività Strava")
         sport = (row.get("Activity Type") or row.get("Type") or "Walk").lower()
 
         if "pad" in name.lower() or "tapis" in name.lower() or "virtualwalk" in sport:
@@ -857,7 +868,7 @@ def parse_strava_html(content: str, filename: str) -> Dict[str, Any]:
     title_m = re.search(r"<h1[^>]*activity-name[^>]*>(.*?)</h1>", content, re.DOTALL)
     if not title_m:
         title_m = re.search(r"<title>(.*?)(?:\|.*)?</title>", content)
-    title = title_m.group(1).strip() if title_m else filename.rsplit(".", 1)[0]
+    title = clean_activity_title(title_m.group(1).strip() if title_m else filename)
 
     m_dist = re.search(r"distance:\s*([\d.]+)", content)
     m_time = re.search(r"moving_time:\s*([\d.]+)", content)
@@ -1000,7 +1011,7 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
         elif "run" in sport or "walk" in sport:
             act_type = "outdoor_walking"
 
-        clean_title = filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ").capitalize()
+        clean_title = clean_activity_title(filename)
         strava_id_m = re.search(r"(?:strava[_-]?)(\d+)", filename.lower())
         strava_id_val = int(strava_id_m.group(1)) if strava_id_m else None
 
@@ -1024,7 +1035,7 @@ def parse_fitness_file(filename: str, content: str) -> Union[Dict[str, Any], Lis
         }
 
     elif "gpx" in tag_clean or filename.lower().endswith(".gpx"):
-        trk_name = root.findtext(".//{*}name") or root.findtext(".//name") or filename.rsplit(".", 1)[0]
+        trk_name = clean_activity_title(root.findtext(".//{*}name") or root.findtext(".//name") or filename)
         pts = root.findall(".//{*}trkpt")
         if not pts:
             pts = root.findall(".//trkpt")

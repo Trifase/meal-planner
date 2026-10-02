@@ -291,14 +291,8 @@ body {
 /* CURRENT DAY HIGHLIGHT (.is-today) */
 .day-card.is-today {
   background: #f0f7ff;
-  border: 2px solid #2563eb;
-  box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.22), 0 0 0 1px #2563eb;
-  position: relative;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.day-card.is-today:hover {
-  box-shadow: 0 6px 18px -2px rgba(37, 99, 235, 0.28), 0 0 0 1px #2563eb;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .day-card.is-today .day-header {

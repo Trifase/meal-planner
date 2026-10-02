@@ -286,6 +286,10 @@ function renderCalendar() {
 }
 
 function renderDayCard(weekNum, day, recipeMap) {
+  const jsDay = new Date().getDay();
+  const todayDayIndex = (jsDay === 0) ? 6 : jsDay - 1;
+  const isToday = (day.day_index === todayDayIndex);
+
   const slotKeys = ['colazione', 'merenda_mattina', 'pranzo', 'merenda_pomeriggio', 'cena'];
 
   const slotsHtml = slotKeys.map(key => {
@@ -327,9 +331,12 @@ function renderDayCard(weekNum, day, recipeMap) {
   }).join('');
 
   return `
-    <div class="day-card">
+    <div class="day-card ${isToday ? 'is-today' : ''}">
       <div class="day-header">
-        <div class="day-name">${day.day_name}</div>
+        <div class="day-name">
+          ${day.day_name}
+          ${isToday ? '<span class="today-tag">Oggi</span>' : ''}
+        </div>
       </div>
       ${slotsHtml}
     </div>

@@ -288,6 +288,104 @@ body {
   text-align: center;
 }
 
+/* CURRENT DAY HIGHLIGHT (.is-today) */
+.day-card.is-today {
+  background: #f0f7ff;
+  border: 2px solid #2563eb;
+  box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.22), 0 0 0 1px #2563eb;
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.day-card.is-today:hover {
+  box-shadow: 0 6px 18px -2px rgba(37, 99, 235, 0.28), 0 0 0 1px #2563eb;
+}
+
+.day-card.is-today .day-header {
+  background: #2563eb;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  border-bottom: none;
+  height: 24px;
+}
+
+.day-card.is-today .day-name {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.day-card.is-today .today-tag {
+  background: #ffffff;
+  color: #2563eb;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+/* Saturated meal slots for today's column */
+.day-card.is-today .slot-item {
+  border-width: 1px 1px 1px 4.5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+}
+
+.day-card.is-today .slot-item.slot-colazione {
+  background: #fef9c3;
+  border-color: #fde047;
+  border-left-color: #d97706;
+}
+.day-card.is-today .slot-item.slot-colazione .slot-label span:first-child {
+  color: #92400e;
+}
+
+.day-card.is-today .slot-item.slot-merenda_mattina {
+  background: #f3e8ff;
+  border-color: #d8b4fe;
+  border-left-color: #9333ea;
+}
+.day-card.is-today .slot-item.slot-merenda_mattina .slot-label span:first-child {
+  color: #6b21a8;
+}
+
+.day-card.is-today .slot-item.slot-pranzo {
+  background: #dcfce7;
+  border-color: #86efac;
+  border-left-color: #059669;
+}
+.day-card.is-today .slot-item.slot-pranzo .slot-label span:first-child {
+  color: #065f46;
+}
+
+.day-card.is-today .slot-item.slot-merenda_pomeriggio {
+  background: #ffedd5;
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+.day-card.is-today .slot-item.slot-merenda_pomeriggio .slot-label span:first-child {
+  color: #9a3412;
+}
+
+.day-card.is-today .slot-item.slot-cena {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  border-left-color: #1d4ed8;
+}
+.day-card.is-today .slot-item.slot-cena .slot-label span:first-child {
+  color: #1e40af;
+}
+
+.day-card.is-today .slot-recipe-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
 /* SLOTS - FIXED HEIGHT FOR PERFECT HORIZONTAL ALIGNMENT ACROSS DAYS */
 .slot-item {
   height: 70px;
